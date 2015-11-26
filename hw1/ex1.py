@@ -34,14 +34,14 @@ def __init__(self, initial):
         all at once. Iterators will work fine within the framework."""
         suc_list = []
         for act in ['U', 'D', 'R', 'L', 'W', 'B', 'S']: #for each action, check what will be the state after we bomberman will do it/
-            suc_state = suc_successor(act, state)
+            suc_state = self.suc_successor(act, state)
             if suc_state is not None: #if the action is legal --> insert the action+ new successor state to the successors list
                 suc_list.append((act, suc_state))
         return suc_list
 
 
     def suc_successor(self, act, state):
-      mut_state = [list(a) for a in state] #change the given state to mutable state
+        mut_state = [list(a) for a in state] #change the given state to mutable state
 
         if act == 'U':
             x = self.BMx
