@@ -7,6 +7,7 @@ ids = ["201316346", "201110376"]  # Feel your IDs
 class BombermanProblem(search.Problem):
     """This class implements a Bomberman problem"""
 
+
 def __init__(self, initial):
     """ Constructor only needs the initial state.
     Don't forget to set the goal or implement the goal test"""
@@ -15,17 +16,17 @@ def __init__(self, initial):
     self.M = len(initial[1])
     self.Monsters = {}
     self.Walls = set()
-    self.Bomb = [False, [None, None] ]
-    for row in range (0,self.N):
-        for col in range (0,self.M):
-            cell= initial[row][col]
+    self.Bomb = [False, [None, None]]
+    for row in range(0,self.N):
+        for col in range(0,self.M):
+            cell = initial[row][col]
             if cell == 90:
                 self.Walls.add((row, col))
             elif cell == 18:
                 self.BMx = row
                 self.BMy = col
-            elif cell in range (12,16):
-                self.Monsters.update({cell:[row, col]})
+            elif cell in range(12,16):
+                self.Monsters.update({cell: [row, col]})
 
     def successor(self, state):
         """Given a state, return a sequence of (action, state) pairs reachable
@@ -39,7 +40,6 @@ def __init__(self, initial):
                 suc_list.append((act, suc_state))
         return suc_list
 
-
     def suc_successor(self, act, state):
         mut_state = [list(a) for a in state] #change the given state to mutable state
 
@@ -52,7 +52,6 @@ def __init__(self, initial):
             if not checked_state:
                 return None
             return checked_state
-
 
         elif act == 'D':
             x = self.BMx
@@ -74,7 +73,6 @@ def __init__(self, initial):
                 return None
             return checked_state
 
-
         elif act == 'L':
             x = self.BMx
             y = self.BMy
@@ -86,20 +84,32 @@ def __init__(self, initial):
             return checked_state
 
         elif act == 'W':
-
+            move_mons()
+            imut_state = (tuple(b) for b in mut_state )
+            return imut_state
 
         elif act == 'S':
-
+            if self.Bomb[0] == True:
+                return None
+            else:
+                self.Bomb[1] = [self.BMx, self. BMy]
+                mut_state[self.BMx][self.BMy] = 88
+                move_mons()
+                imut_state = (tuple(b) for b in mut_state)
+                return imut_state
 
         elif act == 'B':
+            if self.Bomb[0] == False:
+                return None
+            if blow_bomber():
+                return None
+            blow_walls(self, mut_state)
+            blow_mons(self, mut_state)
+            move_mons()
+                imut_state = (tuple(b) for b in mut_state)
+                return imut_state
 
-
-
-        imut_state = (tuple(b) for b in mut_state ) #return the changed state into hashable mode
-        return imut_state
-
-
-    def in_bound(self, x, y): # checks if the wanted direction will end in boundaries
+    def in_bound(self, x, y):
         if 0 <= x < self.N and 0 <= y < self.M:
             return True
         return False
@@ -144,21 +154,62 @@ def __init__(self, initial):
                 mut_state[x][y] = 10
             else:
                 mut_state[x][y] = 80
-                move_mons()
-                return mut_state
-        if is_mons(self, nx,ny):
-            return False
-##        if is_wall(self, nx,ny):
-##            return False
-##        if is_hwall(mut_state,nx, ny):
-##            return False
-##        if is_bomb(self, nx, ny):
-##            return False
+            move_mons()
+            imut_state = (tuple(b) for b in mut_state )
+            return imut_state
         else:
             move_mons()
-            return mut_state
+            imut_state = (tuple(b) for b in mut_state )
+            return imut_state
 
+    def blow_bomber(self):
+        if [self.BMx] == self.Bomb[1][0] and [self.BMy] == self.Bomb[1][1]:
+            return True
+        if [self.BMx] == self.Bomb[1][0]+1 and [self.BMy] == self.Bomb[1][1]:
+            return True
+        elif [self.BMx] == self.Bomb[1][0]-1 and [self.BMy] == self.Bomb[1][1]:
+            return True
+        elif [self.BMx] == self.Bomb[1][0] and [self.BMy] == self.Bomb[1][1]+1:
+            return True
+        elif [self.BMx] == self.Bomb[1][0] and [self.BMy] == self.Bomb[1][1]-1:
+            return True
+        else:
+            return False
 
+    def blow_walls(self, mut_state):
+        x = self.Bomb[1][0]
+        y = self.Bomb[1][1]
+        if [x+1, y] in self.Walls:
+            mut_state[x+1][y] = 10
+            self.Walls.remove(x+1, y)
+        if [x-1, y] in self.Walls:
+            mut_state[x-1][y] = 10
+            self.Walls.remove(x-1, y)
+        if [x, y+1] in self.Walls:
+            mut_state[x][y+1] = 10
+            self.Walls.remove(x, y+1)
+        if [x, y-1] in self.Walls:
+            mut_state[x][y-1] = 10
+            self.Walls.remove(x, y-1)
+        return
+
+    def blow_mons(self, mut_state):
+        x = self.Bomb[1][0]
+        y = self.Bomb[1][1]
+        for key, item in self.Monsters.items():
+            if item == [x+1, y]:
+                mut_state[x+1][y] = 10
+                del self.Monsters[key]
+            elif item == [x-1, y]:
+                mut_state[x-1][y] = 10
+                del self.Monsters[key]
+            elif item == [x, y+1]:
+                mut_state[x][y+1] = 10
+                del self.Monsters[key]
+            elif item == [x, y-1]:
+                mut_state[x][y-1] = 10
+                del self.Monsters[key]
+        return
 
 
 
