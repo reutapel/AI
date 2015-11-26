@@ -1,7 +1,7 @@
 import search
 import math
 
-ids = ["201316346", "201110376"]  # Feel your IDs
+ids = ["201316346", "201110376"]  # Feel your IDs worksss
 
 
 class BombermanProblem(search.Problem):
