@@ -7,7 +7,6 @@ ids = ["201316346", "201110376"]  # Feel your IDs
 class BombermanProblem(search.Problem):
     """This class implements a Bomberman problem"""
 
-cv
 def __init__(self, initial):
     """ Constructor only needs the initial state.
     Don't forget to set the goal or implement the goal test"""
