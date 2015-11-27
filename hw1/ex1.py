@@ -84,7 +84,8 @@ def __init__(self, initial):
             return checked_state
 
         elif act == 'W':
-            move_mons()
+            if not move_mons(self, mut_state):
+                return None
             imut_state = (tuple(b) for b in mut_state )
             return imut_state
 
@@ -94,20 +95,22 @@ def __init__(self, initial):
             else:
                 self.Bomb[1] = [self.BMx, self. BMy]
                 mut_state[self.BMx][self.BMy] = 88
-                move_mons()
+                if not move_mons(self, mut_state):
+                    return None
                 imut_state = (tuple(b) for b in mut_state)
                 return imut_state
 
         elif act == 'B':
             if self.Bomb[0] == False:
                 return None
-            if blow_bomber():
+            if blow_bomber(self):
                 return None
             blow_walls(self, mut_state)
             blow_mons(self, mut_state)
-            move_mons()
-                imut_state = (tuple(b) for b in mut_state)
-                return imut_state
+            if not move_mons(self, mut_state):
+                return None
+            imut_state = (tuple(b) for b in mut_state)
+            return imut_state
 
     def in_bound(self, x, y):
         if 0 <= x < self.N and 0 <= y < self.M:
@@ -139,11 +142,23 @@ def __init__(self, initial):
         if mut_state[x][y] == 10:
             return True
         return False
+# more efficient to access the map instead of maintaining Walls?
 
-    def move_mons():
-        return
+    def move_mons(self, mut_state):  # Q- return true in all functions that there is an if condition waiting for false?
+        for key in sorted(self.Monsters.iterkeys()):
+            x = self.Monsters[key][0]
+            y = self.Monsters[key][1]
+            minx = x
+            miny = y
+            move_to = man_dis(self, x, y, minx, miny, mut_state)
+            if not move_to:
+                return False
+            self.Monsters[key][0] = move_to[0]
+            self.Monsters[key][1] = move_to[1]
+            mut_state[move_to[0]][move_to[1]] = key
+        return True
 
-    def do_checks(self, mut_state, x, y, nx, ny): ## Q: can I save mut_state and just use self.
+    def do_checks(self, mut_state, x, y, nx, ny):  # Q: can I save mut_state and just use self.
         if not in_bound(self, nx, ny):
             return False
         if is_empty(mut_state, nx, ny):
@@ -154,11 +169,13 @@ def __init__(self, initial):
                 mut_state[x][y] = 10
             else:
                 mut_state[x][y] = 80
-            move_mons()
+            if not move_mons(self, mut_state):
+                return False
             imut_state = (tuple(b) for b in mut_state )
             return imut_state
         else:
-            move_mons()
+            if not move_mons(self, mut_state):
+                return False
             imut_state = (tuple(b) for b in mut_state )
             return imut_state
 
@@ -211,8 +228,37 @@ def __init__(self, initial):
                 del self.Monsters[key]
         return
 
-
-
+    def man_dis(self, x, y, minx, miny,  mut_state):
+        dis = 0
+        dest = mut_state[x-1][y]
+        if dest == 18:
+            return False
+        elif dest == 10:
+            dis = abs(self.BMx - x-1) + abs(self.BMy - y)
+            minx = x-1
+            miny = y
+        dest = mut_state[x][y-1]
+        if dest == 18:
+            return False
+        elif dest == 10:
+            if abs(self.BMx - x) + abs(self.BMy - y-1) <= dis:
+                minx = x
+                miny = y-1
+        dest = mut_state[x+1][y]
+        if dest == 18:
+            return False
+        elif dest == 10:
+            if abs(self.BMx - x+1) + abs(self.BMy - y) <= dis:
+                minx = x+1
+                miny = y
+        dest = mut_state[x][y+1]
+        if dest == 18:
+            return False
+        elif dest == 10:
+            if abs(self.BMx - x) + abs(self.BMy - y+1) <= dis:
+                minx = x
+                miny = y+1
+        return [minx, miny]
 
     def h(self, node):
         """ This is the heuristic. It get a node (not a state)
