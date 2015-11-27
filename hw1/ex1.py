@@ -48,7 +48,7 @@ class BombermanProblem(search.Problem):
             y = self.BMy
             nx = (x-1)
             ny = y
-            checked_state = self.do_checks(self,mut_state, x, y, nx, ny)
+            checked_state = self.do_checks(self, mut_state, x, y, nx, ny)
             if not checked_state:
                 return None
             return checked_state
@@ -58,7 +58,7 @@ class BombermanProblem(search.Problem):
             y = self.BMy
             nx = (x+1)
             ny = y
-            checked_state = self.do_checks(self,mut_state, x, y, nx, ny)
+            checked_state = self.do_checks(self, mut_state, x, y, nx, ny)
             if not checked_state:
                 return None
             return checked_state
@@ -68,7 +68,7 @@ class BombermanProblem(search.Problem):
             y = self.BMy
             nx = x
             ny = (y+1)
-            checked_state = self.do_checks(self,mut_state, x, y, nx, ny)
+            checked_state = self.do_checks(self, mut_state, x, y, nx, ny)
             if not checked_state:
                 return None
             return checked_state
@@ -78,7 +78,7 @@ class BombermanProblem(search.Problem):
             y = self.BMy
             nx = x
             ny = (y-1)
-            checked_state = self.do_checks(self,mut_state, x, y, nx, ny)
+            checked_state = self.do_checks(self, mut_state, x, y, nx, ny)
             if not checked_state:
                 return None
             return checked_state
