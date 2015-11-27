@@ -235,6 +235,8 @@ class BombermanProblem(search.Problem):
                 return BombValue
             elif math.isinf(BombValue):
                 return float("infinity")
+        else:
+            return minMonsterBombermanDistance*4 #if there is no bomb, return the (minimun manhattan Bombberman-Monster distance)*number of monsters
 
     def goal_test(self, state):
         """Return True if the state is a goal.
