@@ -236,8 +236,6 @@ class BombermanProblem(search.Problem):
             elif math.isinf(BombValue):
                 return float("infinity")
 
-        return None
-
     def goal_test(self, state):
         """Return True if the state is a goal.
         State will be a goal only if Bomberman lives and all the monsters die"""
