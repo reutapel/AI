@@ -48,7 +48,7 @@ class BombermanProblem(search.Problem):
             y = self.BMy
             nx = (x-1)
             ny = y
-            checked_state = self.do_checks(self, mut_state, x, y, nx, ny)
+            checked_state = self.do_checks(mut_state, x, y, nx, ny)
             if not checked_state:
                 return None
             return checked_state
@@ -58,7 +58,7 @@ class BombermanProblem(search.Problem):
             y = self.BMy
             nx = (x+1)
             ny = y
-            checked_state = self.do_checks(self, mut_state, x, y, nx, ny)
+            checked_state = self.do_checks(mut_state, x, y, nx, ny)
             if not checked_state:
                 return None
             return checked_state
@@ -68,7 +68,7 @@ class BombermanProblem(search.Problem):
             y = self.BMy
             nx = x
             ny = (y+1)
-            checked_state = self.do_checks(self, mut_state, x, y, nx, ny)
+            checked_state = self.do_checks(mut_state, x, y, nx, ny)
             if not checked_state:
                 return None
             return checked_state
@@ -78,13 +78,13 @@ class BombermanProblem(search.Problem):
             y = self.BMy
             nx = x
             ny = (y-1)
-            checked_state = self.do_checks(self, mut_state, x, y, nx, ny)
+            checked_state = self.do_checks(mut_state, x, y, nx, ny)
             if not checked_state:
                 return None
             return checked_state
 
         elif act == 'W':
-            if not self.move_mons(self, mut_state):
+            if not self.move_mons(mut_state):
                 return None
             imut_state = (tuple(b) for b in mut_state)
             return imut_state
@@ -95,7 +95,7 @@ class BombermanProblem(search.Problem):
             else:
                 self.Bomb[1] = [self.BMx, self. BMy]
                 mut_state[self.BMx][self.BMy] = 88
-                if not self.move_mons(self, mut_state):
+                if not self.move_mons(mut_state):
                     return None
                 imut_state = (tuple(b) for b in mut_state)
                 return imut_state
@@ -103,11 +103,11 @@ class BombermanProblem(search.Problem):
         elif act == 'B':
             if not self.Bomb[0]:
                 return None
-            if self.blow_bomber(self):
+            if self.blow_bomber():
                 return None
-            self.blow_walls(self, mut_state)
-            self.blow_mons(self, mut_state)
-            if not self.move_mons(self, mut_state):
+            self.blow_walls(mut_state)
+            self.blow_mons(mut_state)
+            if not self.move_mons(mut_state):
                 return None
             imut_state = (tuple(b) for b in mut_state)
             return imut_state
@@ -142,7 +142,6 @@ class BombermanProblem(search.Problem):
         if mut_state[x][y] == 10:
             return True
         return False
-# more efficient to access the map instead of maintaining Walls?
 
     def move_mons(self, mut_state):  # Q- return true in all functions that there is an if condition waiting for false?
         for key in sorted(self.Monsters.iterkeys()):
@@ -150,7 +149,7 @@ class BombermanProblem(search.Problem):
             y = self.Monsters[key][1]
             minx = x
             miny = y
-            move_to = man_dis(self, x, y, minx, miny, mut_state)
+            move_to = self.man_dis(x, y, minx, miny, mut_state)
             if not move_to:
                 return False
             self.Monsters[key][0] = move_to[0]
@@ -159,7 +158,7 @@ class BombermanProblem(search.Problem):
         return True
 
     def do_checks(self, mut_state, x, y, nx, ny):  # Q: can I save mut_state and just use self.
-        if not self.in_bound(self, nx, ny):
+        if not self.in_bound(nx, ny):
             return False
         if self.is_empty(mut_state, nx, ny):
             mut_state[nx][ny] = 18
@@ -169,12 +168,12 @@ class BombermanProblem(search.Problem):
                 mut_state[x][y] = 10
             else:
                 mut_state[x][y] = 80
-            if not self.move_mons(self, mut_state):
+            if not self.move_mons(mut_state):
                 return False
             imut_state = (tuple(b) for b in mut_state )
             return imut_state
         else:
-            if not self.move_mons(self, mut_state):
+            if not self.move_mons(mut_state):
                 return False
             imut_state = (tuple(b) for b in mut_state )
             return imut_state
@@ -232,36 +231,53 @@ class BombermanProblem(search.Problem):
         return
 
     def man_dis(self, x, y, minx, miny,  mut_state):
-        dis = 0
-        dest = mut_state[x-1][y]
-        if dest == 18:
-            return False
-        elif dest == 10:
-            dis = abs(self.BMx - x-1) + abs(self.BMy - y)
-            minx = x-1
-            miny = y
-        dest = mut_state[x][y-1]
-        if dest == 18:
-            return False
-        elif dest == 10:
-            if abs(self.BMx - x) + abs(self.BMy - y-1) <= dis:
-                minx = x
-                miny = y-1
-        dest = mut_state[x+1][y]
-        if dest == 18:
-            return False
-        elif dest == 10:
-            if abs(self.BMx - x+1) + abs(self.BMy - y) <= dis:
-                minx = x+1
-                miny = y
-        dest = mut_state[x][y+1]
-        if dest == 18:
-            return False
-        elif dest == 10:
-            if abs(self.BMx - x) + abs(self.BMy - y+1) <= dis:
-                minx = x
-                miny = y+1
+        U = [x-1,y]
+        L = [x,y-1]
+        D = [x+1,y]
+        R = [x,y+1]
+        minDis= self.M + self.N
+        for move in (U, L , D, R):
+            destination = mut_state[move[0]][move[1]]
+            if destination == 18:
+                return False
+            elif destination == 10:
+                tempDis = (abs(self.BMx - move[0]) + abs(self.BMy - move[1]))
+                if tempDis <= minDis:
+                    minx = move[0]
+                    miny = move[1]
         return [minx, miny]
+
+    # def man_dis(self, x, y, minx, miny,  mut_state):
+    #     dis = 0
+    #     dest = mut_state[x-1][y]
+    #     if dest == 18:
+    #         return False
+    #     elif dest == 10:
+    #         dis = abs(self.BMx - (x-1)) + abs(self.BMy - y)
+    #         minx = x-1
+    #         miny = y
+    #     dest = mut_state[x][y-1]
+    #     if dest == 18:
+    #         return False
+    #     elif dest == 10:
+    #         if abs(self.BMx - x) + abs(self.BMy - y-1) <= dis:
+    #             minx = x
+    #             miny = y-1
+    #     dest = mut_state[x+1][y]
+    #     if dest == 18:
+    #         return False
+    #     elif dest == 10:
+    #         if abs(self.BMx - x+1) + abs(self.BMy - y) <= dis:
+    #             minx = x+1
+    #             miny = y
+    #     dest = mut_state[x][y+1]
+    #     if dest == 18:
+    #         return False
+    #     elif dest == 10:
+    #         if abs(self.BMx - x) + abs(self.BMy - y+1) <= dis:
+    #             minx = x
+    #             miny = y+1
+    #     return [minx, miny]
 
     def h(self, node):
         """ This is the heuristic. It get a node (not a state)
@@ -308,11 +324,11 @@ class BombermanProblem(search.Problem):
     def DecisionBomb (self, state):
         #check if there is a goal state or dead end in the next steps when you already set a bomb
         if self.initial[self.Bomb[1][0]][self.Bomb[1][1]] == 88:
-            successorListGen1 = self.successor(self, state) #list of the first generation of successors
+            successorListGen1 = self.successor(state) #list of the first generation of successors
             for successorGen1 in successorListGen1:
-                successorListGen2 = self.successor(self, successorGen1) #list of the second generation of successors
+                successorListGen2 = self.successor(successorGen1) #list of the second generation of successors
                 for successorGen2 in successorListGen2:
-                    successorListGen3 = self.successor(self, successorGen2) #list of the third generation of successors
+                    successorListGen3 = self.successor(successorGen2) #list of the third generation of successors
                     if not successorListGen3: #list is empty --> no successor
                         return float("infinity")
                     else:
@@ -321,16 +337,16 @@ class BombermanProblem(search.Problem):
                                 return 3
         elif self.initial[self.Bomb[1][0]][self.Bomb[1][1]] == 80:
             if (abs(self.Bomb[1][0] - self.BMx)+ abs(self.Bomb[1][1] - self.BMy)) == 1:
-                successorListGen1 = self.successor(self, state) #list of the first generation of successors
+                successorListGen1 = self.successor(state) #list of the first generation of successors
                 for successorGen1 in successorListGen1:
                     if not successorListGen1: #list is empty --> no successor
                         return float("infinity")
                     elif self.goal_test(successorGen1): #check if one of the successor is a goal state
                         return 1
             elif (abs(self.Bomb[1][0] - self.BMx)+ abs(self.Bomb[1][1] - self.BMy)) == 2:
-                successorListGen1 = self.successor(self, state) #list of the first generation of successors
+                successorListGen1 = self.successor(state) #list of the first generation of successors
                 for successorGen1 in successorListGen1:
-                    successorListGen2 = self.successor(self, successorGen1) #list of the second generation of successors
+                    successorListGen2 = self.successor(successorGen1) #list of the second generation of successors
                     for successorGen2 in successorListGen2:
                         if not successorListGen2: #list is empty --> no successor
                             return float("infinity")
