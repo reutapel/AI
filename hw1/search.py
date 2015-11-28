@@ -206,7 +206,7 @@ def astar_search(problem, h=None):
     """A* search is best-first graph search with f(n) = g(n)+h(n).
     You need to specify the h function when you call astar_search.
     Uses the pathmax trick: f(n) = max(f(n), g(n)+h(n))."""
-    h = h or problem.h
+    # h = h or problem.h
     def f(n):
         return max(getattr(n, 'f', -infinity), n.path_cost + h(n))
     return best_first_graph_search(problem, f)

@@ -94,7 +94,7 @@ def solve_problem(problem):
     if result[2] != None:
         solved = solved + 1
     #result = check_problem(p, search.astar_search, timeout)
-    #print "A*   ", result        
+    #print "A*   ", result
     #result = check_problem(p, search.breadth_first_graph_search, timeout)
     #print "BFSg ", result
     #result = check_problem(p, search.breadth_first_tree_search, timeout)
