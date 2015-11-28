@@ -19,16 +19,22 @@ class BombermanProblem(search.Problem):
         self.Bomb = [False, [None, None]]
         self.BMx = None
         self.BMy = None
-        # for row in range(0,self.N):
-        #     for col in range(0,self.M):
-        #         cell = initial[row][col]
-        #         if cell == 90:
-        #             self.Walls.add((row, col))
-        #         elif cell == 18:
-        #             self.BMx = row
-        #             self.BMy = col
-        #         elif cell in range(12,16):
-        #             self.Monsters.update({cell: [row, col]})
+        for row in range(0,self.N):
+            for col in range(0,self.M):
+                cell = initial[row][col]
+                if cell == 90:
+                    self.Walls.add((row, col))
+                elif cell == 18:
+                    self.BMx = row
+                    self.BMy = col
+                elif cell in range(12,16):
+                    self.Monsters.update({cell: [row, col]})
+                elif cell == 80:
+                    self.Bomb = [True, [row, col]]
+                elif cell == 88:
+                    self.Bomb = [True, [row, col]]
+                    self.BMx = row
+                    self.BMy = col
 
     def successor(self, state):
         """Given a state, return a sequence of (action, state) pairs reachable
@@ -107,8 +113,8 @@ class BombermanProblem(search.Problem):
             if self.blow_bomber():
                 return None
             self.blow_walls(mut_state)
-            self.blow_mons(mut_state)
-            if not self.move_mons(mut_state,self.BMx, self.BMy):
+            blownMonsters = self.blow_mons(mut_state)
+            if not self.move_mons(mut_state,self.BMx, self.BMy, blownMonsters):
                 return None
             mut_state[self.Bomb[1][0]][self.Bomb[1][1]] = 10
             imut_state = tuple(tuple(b) for b in mut_state)
@@ -145,8 +151,10 @@ class BombermanProblem(search.Problem):
             return True
         return False
 
-    def move_mons(self, mut_state, bmx, bmy):  # Q- return true in all functions that there is an if condition waiting for false?
+    def move_mons(self, mut_state, bmx, bmy, blownMonsters=[]):  # Q- return true in all functions that there is an if condition waiting for false?
         for key in sorted(self.Monsters.iterkeys()):
+            if key in blownMonsters:
+                continue
             monsterx = self.Monsters[key][0]
             monstery = self.Monsters[key][1]
             minx = monsterx
@@ -156,6 +164,8 @@ class BombermanProblem(search.Problem):
                 return False
             # self.Monsters[key][0] = move_to[0]
             # self.Monsters[key][1] = move_to[1]
+            if (move_to[0] == monsterx) and (move_to[1] == monsterx):
+                continue
             mut_state[move_to[0]][move_to[1]] = key
             mut_state[monsterx][monstery] = 10
         return True
@@ -215,11 +225,12 @@ class BombermanProblem(search.Problem):
     def blow_mons(self, mut_state):
         bombx = self.Bomb[1][0]
         bomby = self.Bomb[1][1]
+        blownMonsters =[]
         for key, item in self.Monsters.items():
             if item in ([bombx+1, bomby],[bombx+1, bomby], [bombx, bomby+1],[bombx, bomby-1]):
                 mut_state[item[0]][item[1]] = 10
-                del self.Monsters[key]
-        return
+                blownMonsters.append (key)
+        return blownMonsters
                 # del self.Monsters[key]
             # if item == [bombx+1, bomby]:
             #     mut_state[bombx+1][bomby] = 10
@@ -289,27 +300,64 @@ class BombermanProblem(search.Problem):
     def h(self, node):
         """ This is the heuristic. It get a node (not a state)
         and returns a goal distance estimate"""
+        # return 1
         state = node.state
-        return 0
-        # manhattanDistanceList = []
-        # for monsterNum in self.Monsters.keys():
-        #     manhattanDistanceList.append(self.monsterBomberManhattannDistance(monsterNum))
-        # minMonsterBombermanDistance = min(manhattanDistanceList) #the minimum manhattan Bomberman-monster distance
-        # if self.Bomb[0]:
-        #     if self.BombBomberManhattanDistance() >= 2:
-        #         manhattanBombDistanceList = []
-        #         for monsterNum in self.Monsters.keys():
-        #             manhattanBombDistanceList.append(self.monsterBombManhattanDistance(monsterNum))
-        #         minMonsterBombDistance = min(manhattanBombDistanceList)  #the minimum manhattan Bomb-monster distance
-        #         return (minMonsterBombDistance+2)*len(self.Monsters) #return the (minimun manhattan Bomb-Monster distance+2)*number of monsters
-        #     else:
-        #         BombValue = self.DecisionBomb(state) #the return value of the decisionBomb function
-        #     if BombValue in (1,2,3):
-        #         return BombValue
-        #     elif math.isinf(BombValue):
-        #         return float("infinity")
-        # else:
-        #     return minMonsterBombermanDistance*4 #if there is no bomb, return the (minimun manhattan Bombberman-Monster distance)*number of monsters
+        act = node.action
+        monsters = {}
+        bomb = [False, [None, None]]
+        if act == None:
+            bmx = self.BMx
+            bmy = self.BMy
+            bomb[0] = self.Bomb[0]
+            bomb[1][0] = self.Bomb[1][0]
+            bomb[1][1] = self.Bomb[1][1]
+            monsters.update(self.Monsters)
+        else:
+            if act in ('W','B','S'): #get bomberman and bomb location
+                bmx = self.BMx
+                bmy = self.BMy
+                if act != 'B':
+                    bomb[0] = self.Bomb[0]
+                    bomb[1][0] = self.Bomb[1][0]
+                    bomb[1][1] = self.Bomb[1][1]
+
+            elif act == 'U':
+                bmx = self.BMx-1
+                bmy = self.BMy
+            elif act == 'R':
+                bmx = self.BMx
+                bmy = self.BMy+1
+            elif act == 'D':
+                bmx = self.BMx+1
+                bmy = self.BMy
+            elif act == 'L':
+                bmx = self.BMx
+                bmy = self.BMy-1
+
+            for key in self.Monsters.keys(): #get monsters location
+                location = self.checkMosnterLocation(state, key)
+                if location is not None:
+                    monsters.update({key: location})
+
+        minMonsterBombermanDistance = self.M+ self.N
+        minMonsterBombDistance  = self.M+ self.N
+
+        manhattanMonstertsBombermanDistanceList = []
+        for item in monsters.values(): #find the minimum manhattan Bomberman-monster distance
+            manhattanMonstertsBombermanDistanceList.append(self.monsterBomberManhattannDistance(item, bmx, bmy))
+        if len(manhattanMonstertsBombermanDistanceList)!= 0:
+            minMonsterBombermanDistance = min(manhattanMonstertsBombermanDistanceList) #the minimum manhattan Bomberman-monster distance
+        if bomb[0]:
+            manhattanBombDistanceList = []
+            for item in monsters.values():
+                manhattanBombDistanceList.append(self.monsterBombManhattanDistance(bomb, item))
+            if len(manhattanBombDistanceList)!= 0:
+                minMonsterBombDistance = min(manhattanBombDistanceList)  #the minimum manhattan Bomb-monster distance
+            if (self.BombBomberManhattanDistance(bomb, bmx, bmy) >= 2) and (minMonsterBombDistance == 1):
+                return 0
+            return minMonsterBombDistance*len(monsters) #return the (minimun manhattan Bomb-Monster distance+2)*number of monsters
+        else:
+            return minMonsterBombermanDistance*len(monsters) #if there is no bomb, return the (minimun manhattan Bombberman-Monster distance)*number of monsters
 
     def goal_test(self, state):
         """Return True if the state is a goal.
@@ -333,55 +381,70 @@ class BombermanProblem(search.Problem):
                     self.Bomb = [True, [row, col]]
                     self.BMx = row
                     self.BMy = col
-        # if self.BMx is not None and not bool(self.Monsters):
-        if len(self.Monsters) == 0:
+
+        if len(self.Monsters)==0 and self.BMy is not None:
             return True
         else:
             return False
 
-    def monsterBomberManhattannDistance (self, mosterNum):
+    def checkMosnterLocation(self, state, key):
+        monsterx = self.Monsters.get(key)[0]
+        monstery = self.Monsters.get(key)[1]
+        for location in [[monsterx+1, monstery], [monsterx-1, monstery], [monsterx, monstery+1], [monsterx, monstery-1], [monsterx, monstery]]:
+            if self.in_bound(location[0], location[1]):
+                if state[location[0]][location[1]] == key:
+                    return location
+        return None
+
+    def monsterBomberManhattannDistance (self, Monsters, BMx, BMy):
         #claculate manhattan distance between a monster and bomberman
-        return (abs(self.Monsters.get(mosterNum)[0] - self.BMx)+ abs(self.Monsters.get(mosterNum)[1] - self.BMy))
+        return (abs(Monsters[0] - BMx)+ abs(Monsters[1] - BMy))
 
-    def monsterBombManhattanDistance(self, monsterNum):
+    def monsterBombManhattanDistance(self, Bomb, Monsters):
         #claculate manhattan distance between a monster and bomb
-        return (abs(self.Bomb[1][0] - self.Monsters.get(monsterNum)[0])+ abs(self.Bomb[1][1] - self.Monsters.get(monsterNum)[1]))
+        return (abs(Bomb[1][0] - Monsters[0])+ abs(Bomb[1][1] - Monsters[1]))
 
-    def BombBomberManhattanDistance(self):
+    def BombBomberManhattanDistance(self, Bomb, BMx, BMy):
         #claculate manhattan distance between a bomb and bomberman
-        return (abs(self.Bomb[1][0] - self.BMx)+ abs(self.Bomb[1][1] - self.BMy))
+        return (abs(Bomb[1][0] - BMx)+ abs(Bomb[1][1] - BMy))
 
-    def DecisionBomb (self, state):
-        #check if there is a goal state or dead end in the next steps when you already set a bomb
-        if self.initial[self.Bomb[1][0]][self.Bomb[1][1]] == 88:
-            successorListGen1 = self.successor(state) #list of the first generation of successors
-            for successorGen1 in successorListGen1:
-                successorListGen2 = self.successor(successorGen1) #list of the second generation of successors
-                for successorGen2 in successorListGen2:
-                    successorListGen3 = self.successor(successorGen2) #list of the third generation of successors
-                    if not successorListGen3: #list is empty --> no successor
-                        return float("infinity")
-                    else:
-                        for successorGen3 in successorListGen3: #check if one of the successor is a goal state
-                            if self.goal_test(successorGen3):
-                                return 3
-        elif self.initial[self.Bomb[1][0]][self.Bomb[1][1]] == 80:
-            if (abs(self.Bomb[1][0] - self.BMx)+ abs(self.Bomb[1][1] - self.BMy)) == 1:
-                successorListGen1 = self.successor(state) #list of the first generation of successors
-                for successorGen1 in successorListGen1:
-                    if not successorListGen1: #list is empty --> no successor
-                        return float("infinity")
-                    elif self.goal_test(successorGen1): #check if one of the successor is a goal state
-                        return 1
-            elif (abs(self.Bomb[1][0] - self.BMx)+ abs(self.Bomb[1][1] - self.BMy)) == 2:
-                successorListGen1 = self.successor(state) #list of the first generation of successors
-                for successorGen1 in successorListGen1:
-                    successorListGen2 = self.successor(successorGen1) #list of the second generation of successors
-                    for successorGen2 in successorListGen2:
-                        if not successorListGen2: #list is empty --> no successor
-                            return float("infinity")
-                        elif self.goal_test(successorGen2):#check if one of the successor is a goal state
-                            return 2
+    # def DecisionBomb (self, state):
+    #     #check if there is a goal state or dead end in the next steps when you already set a bomb
+    #     if self.initial[self.Bomb[1][0]][self.Bomb[1][1]] == 88:
+    #         successorListGen1 = self.successor(state) #list of the first generation of successors
+    #         for successorGen1 in successorListGen1:
+    #             successorListGen2 = self.successor(successorGen1) #list of the second generation of successors
+    #             for successorGen2 in successorListGen2:
+    #                 successorListGen3 = self.successor(successorGen2) #list of the third generation of successors
+    #                 if not successorListGen3: #list is empty --> no successor
+    #                     return float("infinity")
+    #                 for successorGen3 in successorListGen3: #check if one of the successor is a goal state
+    #                     if self.goal_test(successorGen3):
+    #                         return 0
+    #                 else:
+    #                     return 1
+    #     elif self.initial[self.Bomb[1][0]][self.Bomb[1][1]] == 80:
+    #         if (abs(self.Bomb[1][0] - self.BMx)+ abs(self.Bomb[1][1] - self.BMy)) == 2:
+    #             successorListGen1 = self.successor(state) #list of the first generation of successors
+    #             for successorGen1 in successorListGen1:
+    #                 if not successorListGen1: #list is empty --> no successor
+    #                     return float("infinity")
+    #                 elif self.goal_test(successorGen1): #check if one of the successor is a goal state
+    #                     return 0
+    #             else:
+    #                 return 1
+    #         elif (abs(self.Bomb[1][0] - self.BMx)+ abs(self.Bomb[1][1] - self.BMy)) == 1:
+    #             successorListGen1 = self.successor(state) #list of the first generation of successors
+    #             for successorGen1 in successorListGen1:
+    #                 successorListGen2 = self.successor(successorGen1) #list of the second generation of successors
+    #                 for successorGen2 in successorListGen2:
+    #                     if not successorListGen2: #list is empty --> no successor
+    #                         return float("infinity")
+    #                     elif self.goal_test(successorGen2):#check if one of the successor is a goal state
+    #                         return 0
+    #                 else:
+    #                     return 1
+
 
 
 
