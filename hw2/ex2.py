@@ -1,7 +1,7 @@
 import time
 import random
 
-ids = ["000000000","111111111"]
+ids = ["201316346","201110376"]
 
 class Controller:
     "This class is a controller for a Bomberman game."
