@@ -29,6 +29,7 @@ class Controller:
         self.DistanceMonsterBomberman = set(sorted(self.Monsters.keys()))
 
 
+    def BuildGraph(self, board):
 
 
     def choose_next_move(self, board, n, reward):
