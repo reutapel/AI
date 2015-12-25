@@ -125,7 +125,7 @@ class Controller:
                                 for boarders in [{1:0,2:1,3:1,4:0}, {1:0,2:0,3:1,4:0}]:#there is no boarder in 4 but there is in 3:
                                     for walls in [{1:0,2:0,3:0,4:1},{1:0,2:1,3:0,4:1}]: #there are walls in 4 but not in 1:
                                         self.Policy[[1,x,y],NumMonster,monster,walls,boarders] = 'U'
-                                    for walls in [{1:0,2:0,3:1,4:1}, {1:1,2:0,3:1,4:1}, {1:0,2:1,3:1,4:1}, {1:1,2:1,3:1,4:1}]: #there are walls in 3 and 4:
+                                for walls in [{1:1,2:0,3:0,4:1},{1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1},{1:1,2:1,3:1,4:1}]: #there are walls in 1 and 4:
                                         self.Policy[[1,x,y],NumMonster,monster,walls,boarders] = 'check'
                                 for boarders in [{1:0,2:1,3:1,4:0}]: #there is boarder in 2 and 3:
                                     for walls in [{1:0,2:0,3:0,4:1}, {1:1,2:0,3:0,4:1}]:  #there are walls in 4:
