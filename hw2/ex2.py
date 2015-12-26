@@ -1,35 +1,208 @@
 import time
 import random
-
+import heapq
 ids = ["201316346", "201110376"]
 # aTeam
+
+
+class Queue:
+    def __init__(self):
+        abstract
+
+    def extend(self, items):
+        for item in items: self.append(item)
+
+
+class FIFOQueue(Queue):
+    """A First-In-First-Out Queue."""
+    def __init__(self):
+        self.A = []; self.start = 0
+    def append(self, item):
+        self.A.append(item)
+    def __len__(self):
+        return len(self.A) - self.start
+    def extend(self, items):
+        self.A.extend(items)
+    def pop(self):
+        e = self.A[self.start]
+        self.start += 1
+        if self.start > 5 and self.start > len(self.A)/2:
+            self.A = self.A[self.start:]
+            self.start = 0
+        return e
+
+
 class Controller:
     "This class is a controller for a Bomberman game."
-    
+
     def __init__(self, board, steps):
         """Initialize controller for given game board and number of steps.
         This method MUST terminate within the specified timeout."""
+        self.board = board
         self.Policy = {}
         self.BMx = None
         self.BMy = None
         self.Monsters = {}
         self.N = len(board)
         self.M = len(board[1])
-        self.steps = steps
+        self.Steps = steps
         self.LastAction = None
+        self.MinDistance = None
+        self.MinMonsterLoc = ()
+        self.adj = {}
+        self.costs = {}
+        self.Fifo = FIFOQueue()
+
+
+    def MinMonster(self):
+        del self.MinMonsterLoc
+        minDist, monstLoc = min((v, k) for k, v in self.Monsters.items())
+        self.MinDistance = minDist
+        self.MinMonsterLoc = monstLoc
+
+
+    def in_bound(self, x, y):
+        if 0 <= x < self.N and 0 <= y < self.M:
+            return True
+        return False
+
+
+    def BuildGraph(self):
         for row in range(0,self.N):
             for col in range(0,self.M):
-                cell = board[row][col]
-                if cell == 18:
-                    self.BMx = row
-                    self.BMy = col
-                elif cell == 12:
-                    self.Monsters.update({self.monsterBomberManhattannDistance(row,col): [row, col]})
-        # change mosters so you can use the key --> run number
-        self.DistanceMonsterBomberman = set(sorted(self.Monsters.keys()))
+                cell = self.board[row][col]
+                if cell in [10, 12, 18, 80, 88, 90]:
+                    self.UpdateAdjcosts(row,col)
+                    if cell == 18:
+                        self.BMx = row
+                        self.BMy = col
+                    elif cell == 12:
+                        self.Monsters[(row, col)] = self.monsterBomberManhattannDistance(row,col)
+        self.MinMonster()
 
 
-    def BuildGraph(self, board):
+    def UpdateAdjcosts(self, row, col):
+        TempNeighboorsList = []
+        for location in [[row+1, col], [row-1, col], [row, col+1], [row, col-1]]:
+            if self.in_bound(location[0], location[1]):
+                if self.board[location[0]][location[1]] in [10, 12, 18, 80, 88, 90]:
+                   TempNeighboorsList.append((location[0],location[1]))
+                   flag = True
+                   if self.board[location[0]][location[1]] == 90:
+                       if self.in_bound(row-1,col) and (self.board[row-1][col] in [10, 12, 18, 80, 88]) and ((row-1 != location[0]) or (col != (location[1]))) and flag:
+                           if self.in_bound(row-1,col-1) and (self.board[row-1][col-1] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','U','L','B','R','D']
+                               flag = False
+                           elif self.in_bound(row-1,col+1) and (self.board[row-1][col+1] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','U','R','B','L','D']
+                               flag = False
+                           elif self.in_bound(row-2,col) and (self.board[row-2][col] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','U','U','B','D','D']
+                               flag = False
+                       if self.in_bound(row+1,col) and (self.board[row+1][col] in [10, 12, 18, 80, 88]) and ((row+1 != location[0]) or (col != (location[1]))) and flag:
+                           if self.in_bound(row+1,col-1) and (self.board[row+1][col-1] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','D','L','B','R','U']
+                               flag = False
+                           elif self.in_bound(row+1,col+1) and (self.board[row+1][col+1] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','D','R','B','L','U']
+                               flag = False
+                           elif self.in_bound(row+2,col) and (self.board[row+2][col] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','D','D','B','U','U']
+                               flag = False
+                       if self.in_bound(row,col-1) and (self.board[row][col-1] in [10, 12, 18, 80, 88]) and ((row != location[0]) or (col-1 != (location[1]))) and flag:
+                           if self.in_bound(row,col-2) and (self.board[row][col-2] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','L','L','B','R','R']
+                               flag = False
+                           elif self.in_bound(row+1,col-1) and (self.board[row+1][col-1] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','L','D','B','U','R']
+                               flag = False
+                           elif self.in_bound(row-1,col-1) and (self.board[row-1][col-1] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','L','U','B','D','R']
+                               flag = False
+                       if self.in_bound(row,col+1) and (self.board[row][col+1] in [10, 12, 18, 80, 88]) and ((row != location[0]) or (col+1 != (location[1]))) and flag:
+                           if self.in_bound(row,col+2) and (self.board[row][col+2] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','R','R','B','L','L']
+                               flag = False
+                           elif self.in_bound(row+1,col+1) and (self.board[row+1][col+1] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','R','D','B','U','L']
+                               flag = False
+                           elif self.in_bound(row-1,col+1) and (self.board[row-1][col+1] in [10, 12, 18, 80, 88]):
+                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','R','U','B','D','L']
+                               flag = False
+                   if (row == location[0]) and (col+1 == (location[1])):
+                       if flag:
+                           self.costs[((row,col),(location[0],location[1]))] = [0,'R']
+                       else:
+                           self.costs[((row,col),(location[0],location[1]))].append('R')
+                   elif (row+1 == location[0]) and (col == (location[1])):
+                       if flag:
+                           self.costs[((row,col),(location[0],location[1]))] = [0,'D']
+                       else:
+                           self.costs[((row,col),(location[0],location[1]))].append('D')
+                   elif (row == location[0]) and (col-1 == (location[1])):
+                       if flag:
+                           self.costs[((row,col),(location[0],location[1]))] = [0,'L']
+                       else:
+                           self.costs[((row,col),(location[0],location[1]))].append('L')
+                   elif (row-1 == location[0]) and (col == (location[1])):
+                       if flag:
+                           self.costs[((row,col),(location[0],location[1]))] = [0,'U']
+                       else:
+                           self.costs[((row,col),(location[0],location[1]))].append('U')
+        if len(TempNeighboorsList):
+            self.adj[(row,col)] = TempNeighboorsList
+
+
+    def dijkstra(self):
+        Q = []     # priority queue of items; note item is mutable.
+        d = {(self.BMx, self.BMy): 0} # vertex -> minimal distance
+        Qd = {}    # vertex -> [d[v], parent_v, v]
+        p = {}     # predecessor
+        visited_set = set([(self.BMx, self.BMy)])
+        pathMoves = []
+
+        for v in self.adj.get((self.BMx, self.BMy), []):
+            d[v] = self.costs[(self.BMx, self.BMy), v][0]
+            item = [d[v], (self.BMx, self.BMy), v]
+            heapq.heappush(Q, item)
+            Qd[v] = item
+
+        while Q:
+            # print Q
+            cost, parent, u = heapq.heappop(Q)
+            if u not in visited_set:
+                # print 'visit:', u
+                p[u]= parent
+                visited_set.add(u)
+                if u == self.MinMonsterLoc:
+                    t = self.MinMonsterLoc
+                    c = t
+                    path = [c]
+                    while p.get(c):
+                        path.insert(0, p[c])
+                        c = p[c]
+                    i = len(path)-1
+                    for j in xrange(0,i):
+                        tempList = self.costs[(path[j],path[j+1])]
+                        k = len(tempList)
+                        for l in xrange(1,k):
+                            pathMoves.append(tempList[l])
+                    for item in pathMoves:
+                        self.Fifo.append(item)
+                    return
+                for v in self.adj.get(u, []):
+                    if d.get(v):
+                        if d[v] > self.costs[u, v][0] + d[u]:
+                            d[v] =  self.costs[u, v][0] + d[u]
+                            Qd[v][0] = d[v]    # decrease key
+                            Qd[v][1] = u       # update predecessor
+                            heapq._siftdown(Q, 0, Q.index(Qd[v]))
+                    else:
+                        d[v] = self.costs[u, v][0] + d[u]
+                        item = [d[v], u, v]
+                        heapq.heappush(Q, item)
+                        Qd[v] = item
+        return None
 
 
     def choose_next_move(self, board, n, reward):
