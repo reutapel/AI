@@ -52,6 +52,8 @@ class Controller:
         self.adj = {}
         self.costs = {}
         self.Fifo = FIFOQueue()
+        self.BuildGraph()
+        self.dijkstra()
 
 
     def MinMonster(self):
@@ -168,10 +170,8 @@ class Controller:
             Qd[v] = item
 
         while Q:
-            # print Q
             cost, parent, u = heapq.heappop(Q)
             if u not in visited_set:
-                # print 'visit:', u
                 p[u]= parent
                 visited_set.add(u)
                 if u == self.MinMonsterLoc:
@@ -205,7 +205,6 @@ class Controller:
         return None
 
 
-    def choose_next_move(self, board, n, reward):
     def choose_next_move(self, board, steps, reward):
         "Choose next action for Bomberman given the current state of the board."
 
