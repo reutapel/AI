@@ -54,6 +54,7 @@ class Controller:
         self.Fifo = FIFOQueue()
         self.BuildGraph()
         self.dijkstra()
+        self.CreatePolicy()
 
 
     def MinMonster(self):
@@ -71,6 +72,8 @@ class Controller:
 
     def BuildGraph(self):
         self.Bomb = []
+        TempMonsters = {}
+        i = 0
         for row in range(0,self.N):
             for col in range(0,self.M):
                 cell = self.board[row][col]
@@ -80,7 +83,11 @@ class Controller:
                         self.BMx = row
                         self.BMy = col
                     elif cell == 12:
-                        self.Monsters[(row, col)] = self.monsterBomberManhattannDistance(row,col)
+                        TempMonsters[i] = [row,col]
+                        i+=1
+
+        for Location in TempMonsters.values():
+            self.Monsters[(Location[0], Location[1])] = self.monsterBomberManhattannDistance(Location[0], Location[1])
         self.MinMonster()
 
 
@@ -323,7 +330,7 @@ class Controller:
         ActionDict = dict(zip(Actions,((0,-1),(1,0),(0,1),(-1,0), (0,0), (0,0), (0,0))))
         MoveCheck = ActionDict[self.LastAction][0] + self.BMx,  ActionDict[self.LastAction][1] + self.BMy
 
-        if not self.in_bound(MoveCheck):
+        if not self.in_bound(MoveCheck[0], MoveCheck[1]):
             return False
 
         Square  = board[MoveCheck[0]][MoveCheck[1]]
@@ -420,7 +427,7 @@ class Controller:
                 Walls[zone] = 1
         return Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls
 
-    def monsterBomberManhattannDistance (self, row,col):
+    def monsterBomberManhattannDistance (self, row, col):
         #claculate manhattan distance between a monster and bomberman
         return (abs(row - self.BMx)+ abs(col - self.BMy))
         
