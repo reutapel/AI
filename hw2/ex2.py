@@ -1,6 +1,7 @@
 import time
 import random
 import heapq
+
 ids = ["201316346", "201110376"]
 # aTeam
 
@@ -38,6 +39,7 @@ class Controller:
     def __init__(self, board, steps):
         """Initialize controller for given game board and number of steps.
         This method MUST terminate within the specified timeout."""
+        t1 = time.time()
         self.board = board
         self.Policy = {}
         self.BMx = None
@@ -52,10 +54,18 @@ class Controller:
         self.adj = {}
         self.costs = {}
         self.Fifo = FIFOQueue()
+        t2 = time.time()
+        print t2-t1
+        t3 = time.time()
         self.BuildGraph()
-        self.dijkstra()
+        t4 = time.time()
+        print t4-t3
+        # self.dijkstra()
+        t5 = time.time()
         self.CreatePolicy()
-
+        t6 = time.time()
+        print t6-t5
+        return
 
     def MinMonster(self):
         del self.MinMonsterLoc
@@ -215,23 +225,27 @@ class Controller:
 
     def choose_next_move(self, board, steps, reward):
         "Choose next action for Bomberman given the current state of the board."
-        if board[self.BMx][self.BMy] in [12,88]:
+        if board[self.BMx][self.BMy] in [18,88]:
             if self.LastAction == 'B' and board[self.BMx][self.BMy] == 88:
                 self.Bombx, self.Bomby = self.BMx, self.BMy
-            return self.GetNextMove(board)
+            self.LastAction = self.GetNextMove(board)
+            return self.LastAction
         else:
             for x, y in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
                 if self.in_bound(self.BMx + x, self.BMy + y) == True:
                     if board[self.BMx + x][self.BMy + y] == 18:
                         self.BMx , self.BMy = self.BMx + x, self.BMy + y
-                        return self.GetNextMove(board)
+                        self.LastAction = self.GetNextMove(board)
+                        return self.LastAction
+        self.LastAction = 'W'
+        return self.LastAction
 
     def GetNextMove(self, board):
         Boarders = self.BuildPlus()
         Bombs, NumMonsters, Monsters, Walls = self.FillPlus(board)
         if NumMonsters == 0:
             NextMove = self.Fifo.pop()
-            if NextMove == None:
+            if NextMove == None: #FIFO is empty
                 if self.LastAction == 'WM':
                     self.dijkstra()
                     self.LastAction = self.Fifo.pop()
@@ -241,7 +255,7 @@ class Controller:
                 else:
                     self.UpdateMonstersLocation(board)
                     self.LastAction = 'WM'
-                    return self.LastAction
+                    return 'W'
             else:
                 self.LastAction = self.Fifo.pop()
                 if not self.UpdateBombermanLocation(board):
@@ -249,6 +263,9 @@ class Controller:
                 return self.LastAction
         else:
             Bombs = tuple(Bombs)
+            Monsters = tuple(Monsters)
+            Walls = tuple(Walls)
+            Boarders = tuple(Boarders)
             NextMove = self.GetPolicy((Bombs, NumMonsters, Monsters, Walls, Boarders))
             if NextMove in ('U', 'D', 'R', 'L', 'W', 'B'):
                 self.LastAction = NextMove
@@ -272,20 +289,20 @@ class Controller:
                     self.LastAction = 'W'
                 return self.LastAction
             elif NextMove == 'Check234':
-                return self.CheckThreeZones(board, Monsters,3, 'Check3',2, 'Check2',4, 'Check4', 1, 1)
+                return self.CheckThreeZones(list(board), list(Monsters),3, 'Check3',2, 'Check2',4, 'Check4', 1, 1)
             elif NextMove == 'Check134':
-                return self.CheckThreeZones(board, Monsters,4, 'Check4',3, 'Check3',1, 'Check1', 0, 0)
+                return self.CheckThreeZones(list(board), list(Monsters),4, 'Check4',3, 'Check3',1, 'Check1', 0, 0)
             elif NextMove == 'Check124':
-                return self.CheckThreeZones(board, Monsters,1, 'Check1',2, 'Check2',4, 'Check4', 1, 1)
+                return self.CheckThreeZones(list(board), list(Monsters),1, 'Check1',2, 'Check2',4, 'Check4', 1, 1)
             elif NextMove == 'Check123':
-                return self.CheckThreeZones(board, Monsters,2, 'Check2',3, 'Check3',1, 'Check1', 0, 0)
+                return self.CheckThreeZones(list(board), list(Monsters),2, 'Check2',3, 'Check3',1, 'Check1', 0, 0)
             else:
                 self.Check(NextMove)
                 self.UpdateBombermanLocation(board)
                 return self.LastAction
 
     def CheckThreeZones(self, board, Monsters,Zone1, MoveZone1,Zone2, MoveZone2,Zone3, MoveZone3, x, y ):
-        if Monsters[Zone1] == 0:
+        if Monsters[Zone1-1] == 0:
             self.Check(MoveZone1)
             if self.LastAction == 'W':
                 return self.CheckTwoZones(board, Monsters,Zone2, MoveZone2,Zone3, MoveZone3, x, y)
@@ -296,10 +313,10 @@ class Controller:
             return self.CheckTwoZones(board, Monsters,Zone2, MoveZone2,Zone3, MoveZone3, x, y)
 
     def CheckTwoZones(self, board, Monsters, Zone1, MoveZone1,Zone2, MoveZone2, x, y):
-        if Monsters[Zone1] == 0 and board[self.BMx -x][self.BMy -y] != 12:
+        if Monsters[Zone1-1] == 0 and board[self.BMx -x][self.BMy -y] != 12:
             self.Check(MoveZone1)
             if self.LastAction == 'W':
-                if Monsters[Zone2] == 0 and board[self.BMx + x][self.BMy + y] != 12:
+                if Monsters[Zone2-1] == 0 and board[self.BMx + x][self.BMy + y] != 12:
                     self.Check(MoveZone2)
                     if self.LastAction == 'W':
                         self.LastAction = 'B'
@@ -315,7 +332,7 @@ class Controller:
             else:
                 self.UpdateBombermanLocation(board)
                 return self.LastAction
-        elif Monsters[Zone2] == 0 and board[self.BMx + x][self.BMy + y] != 12:
+        elif Monsters[Zone2-1] == 0 and board[self.BMx + x][self.BMy + y] != 12:
             self.Check(MoveZone2)
             if self.LastAction == 'W':
                 self.LastAction = 'B'
@@ -333,7 +350,7 @@ class Controller:
         if not self.in_bound(MoveCheck[0], MoveCheck[1]):
             return False
 
-        Square  = board[MoveCheck[0]][MoveCheck[1]]
+        Square = board[MoveCheck[0]][MoveCheck[1]]
 
         if Square not in (10, 18, 88): #this is illegal action
             self.BMx, self.BMy = MoveCheck[0],MoveCheck[1]
@@ -353,79 +370,134 @@ class Controller:
         self.MinMonster()
 
     def BuildPlus(self):
-        Boarders = {}
+        Boarders = []
         for z,x,y in [(1,-1,0), (2,0,-1), (3,1,0), (4,1,0)]:
             if self.in_bound(self.BMx + x, self.BMy + y) == True:
-                Boarders[z] = 0
+                Boarders.append(0)
             else:
-                Boarders[z] = 1
+                Boarders.append(1)
 
         return Boarders
 
     def FillPlus(self, board):
-        Bombs =[]
+        Bombs =[0,0,0]
         ChangeBomb = False # will be False of didn't change Bomb for this area
         NumMonsters = 0
-        Monsters = {}
+        Monsters = [0,0,0,0]
+        Walls = [0,0,0,0]
+        #check zone 1:
         ChangeMonsters = False # will be False of didn't change NumMonster and Monsters for this area
         ChangeWallsFlag = False # will be False of didn't change Walls for this area
-        Walls = {}
-        #check zone 1:
         for x,y in [(-2,0), (-1,-1), (-1,0), (-1,1)]:
-            Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls = self.UpdateDict(board,1, x, y, Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls)
-            if not ChangeMonsters:
-                Monsters[1] = 0
-            if not ChangeWallsFlag:
-                Walls [1] = 0
-        #check zone 2:
-        for x,y in [(0,-2), (0,-1)]:
-            ChangeMonsters = False # will be False of didn't change NumMonster and Monsters for this area
-            ChangeWallsFlag = False
-            Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls = self.UpdateDict(board,2, x, y, Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls)
-            if not ChangeMonsters:
-                Monsters[2] = 0
-            if not ChangeWallsFlag:
-                Walls [2] = 0
-        #check zone 3:
-        for x,y in [(2,0), (1,-1), (1,0), (1,1)]:
-            ChangeMonsters = False # will be False of didn't change NumMonster and Monsters for this area
-            ChangeWallsFlag = False
-            Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls = self.UpdateDict(board,3, x, y, Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls)
-            if not ChangeMonsters:
-                Monsters[3] = 0
-            if not ChangeWallsFlag:
-                Walls [3] = 0
-        #check zone 4:
-        for x,y in [(0,1), (0,2)]:
-            ChangeMonsters = False # will be False of didn't change NumMonster and Monsters for this area
-            ChangeWallsFlag = False
-            Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls = self.UpdateDict(board,4, x, y, Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls)
-            if not ChangeMonsters:
-                Monsters[4] = 0
-            if not ChangeWallsFlag:
-                Walls [4] = 0
-        #check if there is a bomb in the plus
-        if not ChangeBomb:
-            Bombs[0], Bombs[1], Bombs[2] = 0, None, None
-
-        return Bombs, NumMonsters, Monsters, Walls
-
-
-    def UpdateDict (self, board, zone, x, y, Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls):
-        if not ChangeMonsters:
-            if board[self.BMx + x][self.BMy + y] == 12:
+            Bombs, ChangeBomb, WallInCell, MonsterInCell = self.UpdateCell (board, x, y, Bombs, ChangeBomb)
+            if MonsterInCell and not ChangeMonsters:
                 if NumMonsters in [0,1,2,3]:
                     NumMonsters +=1
-                Monsters[zone] = 1
+                Monsters[0] = 1
                 ChangeMonsters = True
-        if not ChangeBomb:
-            if board[self.BMx + x][self.BMy + y] in [80,88]:
-                Bombs[0], Bombs[1], Bombs[2] = 1, x, y
-                ChangeBomb = True
-        if not ChangeWallsFlag:
+            if WallInCell and not ChangeWallsFlag:
+                Walls[0] = 1
+                ChangeWallsFlag = True
+            if ChangeWallsFlag and ChangeMonsters:
+                break
+        #check zone 2:
+        ChangeMonsters = False # will be False of didn't change NumMonster and Monsters for this area
+        ChangeWallsFlag = False # will be False of didn't change Walls for this area
+        for x,y in [(0,-2), (0,-1)]:
+            Bombs, ChangeBomb, WallInCell, MonsterInCell = self.UpdateCell (board, x, y, Bombs, ChangeBomb)
+            if MonsterInCell and not ChangeMonsters:
+                if NumMonsters in [0,1,2,3]:
+                    NumMonsters +=1
+                Monsters[1] = 1
+                ChangeMonsters = True
+            if WallInCell and not ChangeWallsFlag:
+                Walls[1] = 1
+                ChangeWallsFlag = True
+            if ChangeWallsFlag and ChangeMonsters:
+                break
+        #check zone 3:
+        ChangeMonsters = False # will be False of didn't change NumMonster and Monsters for this area
+        ChangeWallsFlag = False # will be False of didn't change Walls for this area
+        for x,y in [(2,0), (1,-1), (1,0), (1,1)]:
+            Bombs, ChangeBomb, WallInCell, MonsterInCell = self.UpdateCell (board, x, y, Bombs, ChangeBomb)
+            if MonsterInCell and not ChangeMonsters:
+                if NumMonsters in [0,1,2,3]:
+                    NumMonsters +=1
+                Monsters[2] = 1
+                ChangeMonsters = True
+            if WallInCell and not ChangeWallsFlag:
+                Walls[2] = 1
+                ChangeWallsFlag = True
+            if ChangeWallsFlag and ChangeMonsters:
+                break
+            # ChangeMonsters,ChangeWallsFlag, Bombs, ChangeBomb, NumMonsters, Monsters, Walls = self.UpateZone(3, ChangeMonsters,ChangeWallsFlag, board, Bombs,NumMonsters, Monsters, Walls, ChangeBomb, x, y)
+        #check zone 4:
+        ChangeMonsters = False # will be False of didn't change NumMonster and Monsters for this area
+        ChangeWallsFlag = False # will be False of didn't change Walls for this area
+        for x,y in [(0,1), (0,2)]:
+            Bombs, ChangeBomb, WallInCell, MonsterInCell = self.UpdateCell (board, x, y, Bombs, ChangeBomb)
+            if MonsterInCell and not ChangeMonsters:
+                if NumMonsters in [0,1,2,3]:
+                    NumMonsters +=1
+                Monsters[3] = 1
+                ChangeMonsters = True
+            if WallInCell and not ChangeWallsFlag:
+                Walls[3] = 1
+                ChangeWallsFlag = True
+            if ChangeWallsFlag and ChangeMonsters:
+                break
+        if Bombs[0] == 0:
+            Bombs[1], Bombs[2] = None, None
+        return Bombs, NumMonsters, Monsters, Walls
+
+    # def UpateZone(self, Zone, ChangeMonsters,ChangeWallsFlag, board, Bombs,NumMonsters, Monsters, Walls, ChangeBomb, x, y):
+    #     Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls = self.UpdateDict(board,4, x, y, Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls)
+    #     if not ChangeMonsters and Monsters[Zone-1] == 1:
+    #         ChangeMonsters = True
+    #     if not ChangeWallsFlag and Walls [Zone-1] == 1:
+    #         ChangeWallsFlag = True
+    #     return ChangeMonsters,ChangeWallsFlag, Bombs, ChangeBomb, NumMonsters, Monsters, Walls
+
+    def UpdateCell (self, board, x, y, Bombs, ChangeBomb):
+        MonsterInCell = False
+        WallInCell = False
+        if self.in_bound(self.BMx + x, self.BMy + y) == True:
+            if board[self.BMx + x][self.BMy + y] == 12:
+                MonsterInCell = True
+                return Bombs, ChangeBomb, WallInCell, MonsterInCell
+            if not ChangeBomb:
+                if board[self.BMx + x][self.BMy + y] in [80,88]:
+                    Bombs[0], Bombs[1], Bombs[2] = 1, x, y
+                    ChangeBomb = True
+                    return Bombs, ChangeBomb, WallInCell, MonsterInCell
             if board[self.BMx + x][self.BMy + y] in [90,99]:
-                Walls[zone] = 1
-        return Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls
+                WallInCell = True
+                return Bombs, ChangeBomb, WallInCell, MonsterInCell
+
+    # def UpdateDict (self, board, zone, x, y, Bombs, ChangeBomb,NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls):
+    #     if not ChangeMonsters:
+    #         if self.in_bound(self.BMx + x, self.BMy + y) == True:
+    #             if board[self.BMx + x][self.BMy + y] == 12:
+    #                 if NumMonsters in [0,1,2,3]:
+    #                     NumMonsters +=1
+    #                 Monsters.append(1)
+    #                 ChangeMonsters = True
+    #             else:
+    #                 Monsters.append(0)
+    #     if not ChangeBomb:
+    #         if self.in_bound(self.BMx + x, self.BMy + y) == True:
+    #             if board[self.BMx + x][self.BMy + y] in [80,88]:
+    #                 Bombs[0], Bombs[1], Bombs[2] = 1, x, y
+    #                 ChangeBomb = True
+    #             else:
+    #                 Bombs[0], Bombs[1], Bombs[2] = 0, None, None
+    #     if not ChangeWallsFlag:
+    #         if self.in_bound(self.BMx + x, self.BMy + y) == True:
+    #             if board[self.BMx + x][self.BMy + y] in [90,99]:
+    #                 Walls.append(1)
+    #             else:
+    #                 Walls.append(0)
+    #     return Bombs, ChangeBomb, NumMonsters, Monsters, ChangeMonsters, ChangeWallsFlag, Walls
 
     def monsterBomberManhattannDistance (self, row, col):
         #claculate manhattan distance between a monster and bomberman
@@ -460,398 +532,354 @@ class Controller:
         for IsBomb in (0,1): #if there is no bomb in the +, but there is monsters --> set a bomb
             if IsBomb == 0:
                 for NumMonster in (1, 2,3, 4):
-                    for monster in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},
-                                    {1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:0,3:1,4:1},
-                                    {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1},{1:1,2:1,3:1,4:1}]:
-                            for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},
-                                        {1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:0,3:1,4:1},
-                                        {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1},
-                                        {1:1,2:1,3:1,4:1}, {1:0,2:0,3:0,4:0}]:
-                                for boarders in [{1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:0,3:1,4:1}, {1:0,2:1,3:1,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:1,3:0,4:0},
-                                                 {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1}, {1:0,2:0,3:0,4:0}]:
+                    for monster in [(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1),(1,1,0,0),(1,0,1,0),(1,0,0,1),(0,1,1,0),(0,1,0,1),(0,0,1,1),(1,1,1,0),(1,0,1,1),(1,1,0,1),(0,1,1,1),(1,1,1,1)]:
+                            for walls in [(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1),(1,1,0,0),(1,0,1,0),(1,0,0,1),(0,1,1,0),(0,1,0,1),(0,0,1,1),(1,1,1,0),(1,0,1,1),(1,1,0,1),(0,1,1,1),(1,1,1,1),(0,0,0,0)]:
+                                for boarders in [(1,1,0,0),(1,0,0,1),(0,0,1,1), (0,1,1,0),(1,0,0,0),(0,1,0,0),(0,0,1,0),(0,0,0,1),(0,0,0,0)]:
                                     self.Policy[((1,None,None),NumMonster,monster,walls,boarders)] = 'S'
             else:
                 for NumMonster in [4]:#if there 4  monsters on the board --> blow the bomb
-                    for monster in [{1:1,2:1,3:1,4:1}]:
+                    for monster in [(1,1,1,1)]:
                         for x,y in [(0,0),(-2,0),(0,-2),(2,0),(0,2),(-1,1),(-1,-1),(1,1),(1,-1),(-1,0),(0,-1),(1,0),(0,1)]:
-                            for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},
-                                      {1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:0,3:1,4:1},
-                                      {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1},
-                                      {1:1,2:1,3:1,4:1}, {1:0,2:0,3:0,4:0}]:
-                                for boarders in [{1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:0,3:1,4:1}, {1:0,2:1,3:1,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:1,3:0,4:0},
-                                              {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1}, {1:0,2:0,3:0,4:0}]:
+                            for walls in [(1,0,0,0),(0,1,0,0),(0,1,0,0),(0,0,0,1),(1,1,0,0),(1,0,1,0),(1,0,0,1),(0,1,1,0),(0,1,0,1),(0,0,1,1),(1,1,1,0),(1,0,1,1),(1,1,0,1),(0,1,1,1),(1,1,1,1),(0,0,0,0)]:
+                                for boarders in [(1,1,0,0), (1,0,0,1), (0,0,1,1),(0,1,1,0), (1,0,0,0), (0,1,0,0),(0,1,0,0), (0,0,0,1), (0,0,0,0)]:
                                     self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B'
 
                 for x,y in [(0,0)]: #when there is a bomb with bomberman in the same cell --> escape to the area you can go, if there no such area --> bomb or wait
                    for NumMonster in (1, 2):
                         if NumMonster == 1:#if there is one monster on the board --> and you can't escape --> bomb, if there are 3 monsters- check if there are more that close to you than far from you
-                            for monster in [{1:1,2:0,3:0,4:0}]: #noster in zone 1:
-                                for boarders in [{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:1,3:0,4:0}]: #there is no boarder in 3:
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1},{1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:0,4:1},
-                                                {1:1,2:1,3:0,4:1}, {1:0,2:0,3:0,4:0}]:#there are no wall in 3:
+                            for monster in [(1,0,0,0)]: #noster in zone 1:
+                                for boarders in [(0,1,0,0), (0,0,0,0), (0,1,0,1), (0,1,0,0)]: #there is no boarder in 3:
+                                    for walls in [(1,0,0,0),(0,1,0,0), (0,0,0,1),(1,1,0,0), (1,0,0,1), (0,1,0,1),(1,1,0,1), (0,0,0,0)]:#there are no wall in 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D'
-                                for boarders in [{1:0,2:0,3:0,4:1}, {1:0,2:0,3:0,4:0}]: #there is no boarder in 3 and in 2:
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:1,2:0,3:1,4:0},{1:0,2:0,3:1,4:1},{1:1,2:0,3:1,4:1}]:#there are walls in 3 but not in 2:
+                                for boarders in [(0,0,0,1), (0,0,0,0)]: #there is no boarder in 3 and in 2:
+                                    for walls in [(0,1,0,0), (1,0,1,0),(0,0,1,1),(1,0,1,1)]:#there are walls in 3 but not in 2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L'
-                                    for walls in [{1:0,2:1,3:1,4:1}, {1:1,2:1,3:1,4:1}]: #there are walls in 2,3,4:
+                                    for walls in [(0,1,1,1), (1,1,1,1)]: #there are walls in 2,3,4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'CheckAll'
-                                    for walls in [{1:0,2:1,3:1,4:0}, {1:1,2:1,3:1,4:0}]: #there are walls in 2,3 but not in 4:
-                                        if boarders == {1:0,2:0,3:0,4:1}: #there is boarder in 4:
+                                    for walls in [(0,1,1,0),(1,1,1,0)]: #there are walls in 2,3 but not in 4:
+                                        if boarders == (0,0,0,1): #there is boarder in 4:
                                             self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check23'
-                                        elif boarders == {1:0,2:0,3:0,4:0}: #there is no boarder in 4:
+                                        elif boarders == (0,0,0,0): #there is no boarder in 4:
                                             self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R'
-                                for boarders in [{1:1,2:1,3:0,4:0},{1:0,2:1,3:0,4:0}]:#there is no boarder in 3 but there is in 2:
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:1,2:0,3:1,4:0}]: #there are walls in 3 but not in 4:
+                                for boarders in [(1,1,0,0),(0,1,0,0)]:#there is no boarder in 3 but there is in 2:
+                                    for walls in [(0,1,0,0), (1,0,1,0)]: #there are walls in 3 but not in 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R'
-                                    for walls in [{1:0,2:0,3:1,4:1}, {1:1,2:0,3:1,4:1}]: #there are walls in 3 and 4:
+                                    for walls in [(0,0,1,1), (1,0,1,1)]: #there are walls in 3 and 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check34'
-                                for boarders in [{1:0,2:1,3:1,4:0}]: #there is boarder in 2 and 3:
-                                    for walls in [{1:0,2:0,3:0,4:1}, {1:1,2:0,3:0,4:1}]:  #there are walls in 4:
+                                for boarders in [(0,1,1,0)]: #there is boarder in 2 and 3:
+                                    for walls in [(0,0,0,1), (1,0,0,1)]:  #there are walls in 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B'
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:0,2:0,3:0,4:0}]:#there are no walls in 4:
+                                    for walls in [(1,0,0,0), (0,0,0,0)]:#there are no walls in 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R'
-                                for boarders in [{1:0,2:0,3:1,4:0}]: #there is no boarder in 4,2 but there is boarder in 3:
-                                    for walls in [{1:0,2:1,3:0,4:1},{1:1,2:1,3:0,4:1}]: #there is wall in 4,2:
+                                for boarders in [(0,1,0,0)]: #there is no boarder in 4,2 but there is boarder in 3:
+                                    for walls in [(0,1,0,1),(1,1,0,1)]: #there is wall in 4,2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check42'
-                                    for walls in [{1:0,2:1,3:0,4:0}, {1:1,2:1,3:0,4:0}]:#there is no wall in 4 but there is wall in 2:
+                                    for walls in [(0,1,0,0), (1,1,0,0)]:#there is no wall in 4 but there is wall in 2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R'
-                                for boarders in [{1:0,2:0,3:1,4:1}, {1:0,2:0,3:1,4:0}]: #there is no boarder in 2 but there is boarder in 3:
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:0,2:0,3:0,4:1},{1:1,2:0,3:0,4:1},{1:0,2:0,3:0,4:0}]: #there is no walls in 2:
+                                for boarders in [(0,0,1,1), (0,1,0,0)]: #there is no boarder in 2 but there is boarder in 3:
+                                    for walls in [(1,0,0,0), (0,0,0,1),(1,0,0,1),(0,0,0,0)]: #there is no walls in 2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L'
-                                for boarders in [{1:0,2:0,3:1,4:1}]: #there is no boarder in 2 but there is boarder in 3,4:
-                                    for walls in [{1:1,2:1,3:0,4:0},{1:0,2:1,3:0,4:0}]: #there is walls in 2:
+                                for boarders in [(0,0,1,1)]: #there is no boarder in 2 but there is boarder in 3,4:
+                                    for walls in [(1,1,0,0),(0,1,0,0)]: #there is walls in 2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check2'
 
 
-                            for monster in [{1:0,2:1,3:0,4:0}]: #noster in zone 2:
-                                for boarders in [{1:1,2:0,3:1,4:0}, {1:0,2:0,3:0,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}]: #there is no boarder in 4:
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0},{1:0,2:1,3:1,4:0},
-                                                 {1:1,2:1,3:1,4:0},{1:0,2:0,3:0,4:0}]:#there are no wall in 4:
+                            for monster in [(0,1,0,0)]: #noster in zone 2:
+                                for boarders in [(1,0,1,0), (0,0,0,0), (1,0,0,0), (0,1,0,0)]: #there is no boarder in 4:
+                                    for walls in [(1,0,0,0),(0,1,0,0), (0,1,0,0), (1,1,0,0), (1,0,1,0),(0,1,1,0),(1,1,1,0),(0,0,0,0)]:#there are no wall in 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R'
-                                for boarders in [{1:1,2:0,3:0,4:0}, {1:0,2:0,3:0,4:0}]: #there is no boarder in 3 and in 4:
-                                    for walls in [{1:0,2:0,3:0,4:1},{1:1,2:0,3:0,4:1},{1:0,2:1,3:0,4:1}, {1:1,2:1,3:0,4:1}]:#there are walls in 4 but not in 3:
+                                for boarders in [(1,0,0,0), (0,0,0,0)]: #there is no boarder in 3 and in 4:
+                                    for walls in [(0,0,0,1),(1,0,0,1),(0,1,0,1), (1,1,0,1)]:#there are walls in 4 but not in 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D'
-                                    for walls in [{1:1,2:0,3:1,4:1},{1:1,2:1,3:1,4:1}]: #there are walls in 1,3,4:
+                                    for walls in [(1,0,1,1),(1,1,1,1)]: #there are walls in 1,3,4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'CheckAll'
-                                    for walls in [{1:0,2:0,3:1,4:1},{1:0,2:1,3:1,4:1}]: #there are walls in 3,4 but not in 1:
-                                        if boarders == {1:1,2:0,3:0,4:0}: #there is boarder in 1:
+                                    for walls in [(0,0,1,1),(0,1,1,1)]: #there are walls in 3,4 but not in 1:
+                                        if boarders == (1,0,0,0): #there is boarder in 1:
                                             self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check34'
-                                        elif boarders == {1:0,2:0,3:0,4:0}: #there is no boarder in 1:
+                                        elif boarders == (0,0,0,0): #there is no boarder in 1:
                                             self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U'
-                                for boarders in [{1:0,2:1,3:1,4:0}, {1:0,2:0,3:1,4:0}]:#there is no boarder in 4 but there is in 3:
-                                    for walls in [{1:0,2:0,3:0,4:1},{1:0,2:1,3:0,4:1}]: #there are walls in 4 but not in 1:
+                                for boarders in [(0,1,1,0), (0,1,0,0)]:#there is no boarder in 4 but there is in 3:
+                                    for walls in [(0,0,0,1),(0,1,0,1)]: #there are walls in 4 but not in 1:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U'
-                                    for walls in [{1:1,2:0,3:0,4:1},{1:1,2:1,3:0,4:1}]: #there are walls in 1 and 4:
+                                    for walls in [(1,0,0,1),(1,1,0,1)]: #there are walls in 1 and 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check14'
-                                for boarders in [{1:0,2:0,3:1,4:1}]: #there is boarder in 4 and 3:
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:1,2:1,3:0,4:0}]:  #there are walls in 1:
+                                for boarders in [(0,0,1,1)]: #there is boarder in 4 and 3:
+                                    for walls in [(1,0,0,0), (1,1,0,0)]:  #there are walls in 1:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check1'
-                                    for walls in [{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:0}]:#there are no walls in 1:
+                                    for walls in [(0,1,0,0), (0,0,0,0)]:#there are no walls in 1:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U'
-                                for boarders in [{1:0,2:0,3:0,4:1}]: #there is no boarder in 1,3 but there is boarder in 4:
-                                    for walls in [{1:0,2:1,3:1,4:0},{1:1,2:1,3:1,4:0}]: #there is wall in 1,3:
+                                for boarders in [(0,0,0,1)]: #there is no boarder in 1,3 but there is boarder in 4:
+                                    for walls in [(0,1,1,0),(1,1,1,0)]: #there is wall in 1,3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check13'
-                                    for walls in [{1:0,2:1,3:1,4:0}, {1:0,2:0,3:1,4:0}]:#there is no wall in 1 but there is wall in 3:
+                                    for walls in [(0,1,1,0), (0,1,0,0)]:#there is no wall in 1 but there is wall in 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U'
-                                for boarders in [{1:0,2:0,3:0,4:1}, {1:1,2:0,3:0,4:1}]: #there is no boarder in 3 but there is boarder in 4:
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:0,2:0,3:0,4:0},{1:1,2:1,3:0,4:0},{1:0,2:1,3:0,4:0}]: #there is no walls in 3:
+                                for boarders in [(0,0,0,1), (1,0,0,1)]: #there is no boarder in 3 but there is boarder in 4:
+                                    for walls in [(1,0,0,0), (0,0,0,0),(1,1,0,0),(0,1,0,0)]: #there is no walls in 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D'
-                                for boarders in [{1:1,2:0,3:0,4:1}]: #there is no boarder in 3 but there is boarder in 1,4:
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:0,2:1,3:1,4:0}]: #there is walls in 3:
+                                for boarders in [(1,0,0,1)]: #there is no boarder in 3 but there is boarder in 1,4:
+                                    for walls in [(0,1,0,0),(0,1,1,0)]: #there is walls in 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check3'
 
-                            for monster in [{1:0,2:0,3:1,4:0}]: #noster in zone 3:
-                                for boarders in [{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:1,3:0,4:0}]: #there is no boarder in 1:
-                                    for walls in [{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},{1:0,2:1,3:1,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:0,3:1,4:1},
-                                        {1:0,2:1,3:1,4:1}, {1:0,2:0,3:0,4:0}]:#there are no wall in 1:
+                            for monster in [(0,1,0,0)]: #noster in zone 3:
+                                for boarders in [(0,1,0,0), (0,0,0,0), (0,1,0,1), (0,1,0,0)]: #there is no boarder in 1:
+                                    for walls in [(0,1,0,0), (0,1,0,0), (0,0,0,1),(0,1,1,0), (0,1,0,1), (0,0,1,1),(0,1,1,1), (0,0,0,0)]:#there are no wall in 1:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U'
-                                for boarders in [{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:0}]: #there is no boarder in 4 and in 1:
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:1,3:1,4:0}]:#there are walls in 1 but not in 4:
+                                for boarders in [(0,1,0,0), (0,0,0,0)]: #there is no boarder in 4 and in 1:
+                                    for walls in [(1,0,0,0), (1,1,0,0), (1,0,1,0),(1,1,1,0)]:#there are walls in 1 but not in 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R'
-                                    for walls in [{1:1,2:1,3:1,4:1},{1:1,2:1,3:0,4:1}]: #there are walls in 1,2,4:
+                                    for walls in [(1,1,1,1),(1,1,0,1)]: #there are walls in 1,2,4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'CheckAll'
-                                    for walls in [{1:1,2:0,3:1,4:1},{1:1,2:0,3:0,4:1}]: #there are walls in 1,4 but not in 2:
-                                        if boarders == {1:0,2:1,3:0,4:0}: #there is boarder in 2:
+                                    for walls in [(1,0,1,1),(1,0,0,1)]: #there are walls in 1,4 but not in 2:
+                                        if boarders == (0,1,0,0): #there is boarder in 2:
                                             self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check14'
-                                        elif boarders == {1:0,2:0,3:0,4:0}: #there is no boarder in 3:
+                                        elif boarders == (0,0,0,0): #there is no boarder in 3:
                                             self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D'
-                                for boarders in [{1:0,2:1,3:0,4:1}, {1:0,2:0,3:0,4:1}]:#there is no boarder in 1 but there is in 4:
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:1,2:0,3:1,4:0}]: #there are walls in 1 but not in 2:
+                                for boarders in [(0,1,0,1), (0,0,0,1)]:#there is no boarder in 1 but there is in 4:
+                                    for walls in [(1,0,0,0),(1,0,1,0)]: #there are walls in 1 but not in 2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L'
-                                    for walls in [{1:1,2:1,3:0,4:0},{1:1,2:1,3:1,4:0}]: #there are walls in 1 and 2:
+                                    for walls in [(1,1,0,0),(1,1,1,0)]: #there are walls in 1 and 2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check12'
-                                for boarders in [{1:1,2:0,3:0,4:1}]: #there is boarder in 1 and 4:
-                                    for walls in [{1:0,2:1,3:0,4:0}, {1:0,2:1,3:1,4:0}]:  #there are walls in 2:
+                                for boarders in [(1,0,0,1)]: #there is boarder in 1 and 4:
+                                    for walls in [(0,1,0,0),(0,1,1,0)]:  #there are walls in 2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B'
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}]:#there are no walls in 2:
+                                    for walls in [(0,0,0,0), (0,1,0,0)]:#there are no walls in 2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L'
-                                for boarders in [{1:1,2:0,3:0,4:0}]: #there is no boarder in 4,2 but there is boarder in 1:
-                                    for walls in [{1:0,2:1,3:1,4:1},{1:0,2:1,3:0,4:1}]: #there is wall in 4,2:
+                                for boarders in [(1,0,0,0)]: #there is no boarder in 4,2 but there is boarder in 1:
+                                    for walls in [(0,1,1,1),(0,1,0,1)]: #there is wall in 4,2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check24'
-                                    for walls in [{1:0,2:0,3:1,4:1}, {1:0,2:0,3:1,4:1}]:#there is no wall in 2 but there is wall in 4:
+                                    for walls in [(0,0,1,1), (0,0,1,1)]:#there is no wall in 2 but there is wall in 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L'
-                                for boarders in [{1:0,2:0,3:0,4:1}, {1:1,2:0,3:0,4:1}]: #there is no boarder in 4 but there is boarder in 1:
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:1,3:0,4:0},{1:0,2:1,3:1,4:0},{1:0,2:0,3:1,4:0}]: #there is no walls in 4:
+                                for boarders in [(0,0,0,1), (1,0,0,1)]: #there is no boarder in 4 but there is boarder in 1:
+                                    for walls in [(0,0,0,0), (0,1,0,0),(0,1,1,0),(0,1,0,0)]: #there is no walls in 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R'
-                                for boarders in [{1:1,2:0,3:0,4:1}]: #there is no boarder in 4 but there is boarder in 1,2:
-                                    for walls in [{1:0,2:0,3:1,4:1},{1:0,2:0,3:0,4:1}]: #there is walls in 4:
+                                for boarders in [(1,0,0,1)]: #there is no boarder in 4 but there is boarder in 1,2:
+                                    for walls in [(0,0,1,1),(0,0,0,1)]: #there is walls in 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check4'
 
-                            for monster in [{1:0,2:0,3:0,4:1}]: #noster in zone 4:
-                                for boarders in [{1:1,2:0,3:1,4:0}, {1:0,2:0,3:0,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}]: #there is no boarder in 2:
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},{1:1,2:0,3:1,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:0,3:1,4:1},
-                                        {1:1,2:0,3:1,4:1},{1:0,2:0,3:0,4:0}]:#there are no wall in 2:
+                            for monster in [(0,0,0,1)]: #noster in zone 4:
+                                for boarders in [(1,0,1,0), (0,0,0,0), (1,0,0,0), (0,1,0,0)]: #there is no boarder in 2:
+                                    for walls in [(1,0,0,0), (0,1,0,0), (0,0,0,1),(1,0,1,0), (1,0,0,1), (0,0,1,1),(1,0,1,1),(0,0,0,0)]:#there are no wall in 2:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L'
-                                for boarders in [{1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:0}]: #there is no boarder in 1,2:
-                                    for walls in [{1:0,2:1,3:0,4:0},{1:0,2:1,3:1,4:0}, {1:0,2:1,3:0,4:1},{1:0,2:1,3:1,4:1}]:#there are walls in 2 but not in 1:
+                                for boarders in [(0,1,0,0), (0,0,0,0)]: #there is no boarder in 1,2:
+                                    for walls in [(0,1,0,0),(0,1,1,0), (0,1,0,1),(0,1,1,1)]:#there are walls in 2 but not in 1:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U'
-                                    for walls in [{1:1,2:1,3:1,4:1},{1:1,2:1,3:1,4:0}]: #there are walls in 1,2,3:
+                                    for walls in [(1,1,1,1),(1,1,1,0)]: #there are walls in 1,2,3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'CheckAll'
-                                    for walls in [{1:1,2:1,3:0,4:1},{1:1,2:1,3:0,4:0}]: #there are walls in 1,2 but not in 3:
-                                        if boarders == {1:0,2:0,3:1,4:0}: #there is boarder in 3:
+                                    for walls in [(1,1,0,1),(1,1,0,0)]: #there are walls in 1,2 but not in 3:
+                                        if boarders == (0,1,0,0): #there is boarder in 3:
                                             self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check12'
-                                        elif boarders == {1:0,2:0,3:0,4:0}: #there is no boarder in 3:
+                                        elif boarders == (0,0,0,0): #there is no boarder in 3:
                                             self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D'
-                                for boarders in [{1:1,2:0,3:0,4:0}, {1:1,2:0,3:1,4:0}]:#there is no boarder in 2 but there is in 1:
-                                    for walls in [{1:0,2:1,3:0,4:0},{1:0,2:1,3:0,4:1}]: #there are walls in 2 but not in 3:
+                                for boarders in [(1,0,0,0), (1,0,1,0)]:#there is no boarder in 2 but there is in 1:
+                                    for walls in [(0,1,0,0),(0,1,0,1)]: #there are walls in 2 but not in 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D'
-                                    for walls in [{1:0,2:1,3:1,4:0},{1:0,2:1,3:1,4:1}]: #there are walls in 2 and 3:
+                                    for walls in [(0,1,1,0),(0,1,1,1)]: #there are walls in 2 and 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check23'
-                                for boarders in [{1:1,2:1,3:0,4:0}]: #there is boarder in 1,2:
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:0,2:0,3:1,4:1}]:  #there are walls in 3:
+                                for boarders in [(1,1,0,0)]: #there is boarder in 1,2:
+                                    for walls in [(0,1,0,0), (0,0,1,1)]:  #there are walls in 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check3'
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:0,3:0,4:1}]:#there are no walls in 3:
+                                    for walls in [(0,0,0,0), (0,0,0,1)]:#there are no walls in 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D'
-                                for boarders in [{1:0,2:1,3:0,4:0}]: #there is no boarder in 1,3 but there is boarder in 2:
-                                    for walls in [{1:1,2:0,3:1,4:1},{1:1,2:0,3:1,4:0}]: #there is wall in 1,3:
+                                for boarders in [(0,1,0,0)]: #there is no boarder in 1,3 but there is boarder in 2:
+                                    for walls in [(1,0,1,1),(1,0,1,0)]: #there is wall in 1,3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check13'
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:1,2:0,3:0,4:1}]:#there is no wall in 3 but there is wall in 1:
+                                    for walls in [(1,0,0,0), (1,0,0,1)]:#there is no wall in 3 but there is wall in 1:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D'
-                                for boarders in [{1:0,2:1,3:0,4:0}, {1:0,2:1,3:1,4:0}]: #there is no boarder in 1 but there is boarder in 2:
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0},{1:0,2:0,3:1,4:1},{1:0,2:0,3:0,4:1}]: #there are no walls in 1:
+                                for boarders in [(0,1,0,0),(0,1,1,0)]: #there is no boarder in 1 but there is boarder in 2:
+                                    for walls in [(0,0,0,0), (0,1,0,0),(0,0,1,1),(0,0,0,1)]: #there are no walls in 1:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U'
-                                for boarders in [{1:0,2:1,3:1,4:0}]: #there is no boarder in 1 but there is boarder in 2,3:
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:1,2:0,3:0,4:1}]: #there are walls in 1:
+                                for boarders in [(0,1,1,0)]: #there is no boarder in 1 but there is boarder in 2,3:
+                                    for walls in [(1,0,0,0),(1,0,0,1)]: #there are walls in 1:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check1'
 
 
                         if NumMonster == 2:#if there are 2 monsters in the board
-                            for monster in [{1:1,2:1,3:0,4:0}]: #there are monsters in 1,2
-                                for boarders in [{1:0,2:0,3:1,4:1}]: #there is boarder in 3,4
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:1,3:0,4:0},{1:1,2:1,3:0,4:0}]: #there is no walls in 3,4 because there are boasrders
+                            for monster in [(1,1,0,0)]: #there are monsters in 1,2
+                                for boarders in [(0,0,1,1)]: #there is boarder in 3,4
+                                    for walls in [(0,0,0,0), (1,0,0,0), (0,1,0,0),(1,1,0,0)]: #there is no walls in 3,4 because there are boasrders
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:0,2:0,3:1,4:0}]: #there is boarder in 3 but not in 4
-                                    for walls in [{1:0,2:0,3:0,4:1}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:0,4:1},{1:1,2:1,3:0,4:1}]: #there are walls in 4
+                                for boarders in [(0,1,0,0)]: #there is boarder in 3 but not in 4
+                                    for walls in [(0,0,0,1), (1,0,0,1), (0,1,0,1),(1,1,0,1)]: #there are walls in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(2)
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:1,3:0,4:0},{1:1,2:1,3:0,4:0}]: #there are no walls in 4
+                                    for walls in [(0,0,0,0), (1,0,0,0), (0,1,0,0),(1,1,0,0)]: #there are no walls in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R' #(3)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there are no boarders in 3,4
-                                    for walls in [{1:0,2:0,3:1,4:1}, {1:1,2:0,3:1,4:1}, {1:0,2:1,3:1,4:1},{1:1,2:1,3:1,4:1}]: #there are walls in 3,4
+                                for boarders in [(0,0,0,0)]: #there are no boarders in 3,4
+                                    for walls in [(0,0,1,1), (1,0,1,1),(0,1,1,1),(1,1,1,1)]: #there are walls in 3,4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(4)
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:1,2:0,3:1,4:0}, {1:0,2:1,3:1,4:0},{1:1,2:1,3:1,4:0}]: #there are walls in 3 but not in 4
+                                    for walls in [(0,1,0,0), (1,0,1,0),(0,1,1,0),(1,1,1,0)]: #there are walls in 3 but not in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R' #(5)
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1}, {1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:0,4:1},
-                                                    {1:1,2:1,3:0,4:1},{1:0,2:0,3:0,4:0}]: #there are walls no walls in 3
+                                    for walls in [(1,0,0,0),(0,1,0,0), (0,0,0,1), (1,1,0,0), (1,0,0,1), (0,1,0,1),(1,1,0,1),(0,0,0,0)]: #there are walls no walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D' #(6)
-                                for boarders in [{1:0,2:0,3:0,4:1}]: #there are no boarders in 3 but there are in 4
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:1,2:1,3:0,4:0},{1:0,2:0,3:0,4:0}]: #there are walls no walls in 3
+                                for boarders in [(0,0,0,1)]: #there are no boarders in 3 but there are in 4
+                                    for walls in [(1,0,0,0),(0,1,0,0), (1,1,0,0),(0,0,0,0)]: #there are walls no walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D' #(7)
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:1,2:0,3:1,4:0}, {1:0,2:1,3:1,4:0},{1:1,2:1,3:1,4:0}]: #there are walls in 3
+                                    for walls in [(0,1,0,0), (1,0,1,0),(0,1,1,0),(1,1,1,0)]: #there are walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(8)
 
-                            for monster in [{1:1,2:0,3:0,4:1}]: #there are monsters in 1,4
-                                for boarders in [{1:0,2:1,3:1,4:0}]: #there are boarders in 3,2
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:0,3:0,4:1},{1:1,2:0,3:0,4:1}]: #there is no walls in 3,2 because there are boasrders
+                            for monster in [(1,0,0,1)]: #there are monsters in 1,4
+                                for boarders in [(0,1,1,0)]: #there are boarders in 3,2
+                                    for walls in [(0,0,0,0), (1,0,0,0), (0,0,0,1),(1,0,0,1)]: #there is no walls in 3,2 because there are boasrders
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:0,2:0,3:1,4:0}]: #there is boarder in 3 but not in 2
-                                    for walls in [{1:0,2:1,3:0,4:0}, {1:1,2:1,3:0,4:0}, {1:0,2:1,3:0,4:1},{1:1,2:1,3:0,4:1}]: #there are walls in 2
+                                for boarders in [(0,1,0,0)]: #there is boarder in 3 but not in 2
+                                    for walls in [(0,1,0,0), (1,1,0,0), (0,1,0,1),(1,1,0,1)]: #there are walls in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(2)
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:0,3:0,4:1},{1:1,2:0,3:0,4:1}]: #there are no walls in 2
+                                    for walls in [(0,0,0,0), (1,0,0,0), (0,0,0,1),(1,0,0,1)]: #there are no walls in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L' #(3)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there are no boarders in 3,2
-                                    for walls in [{1:0,2:1,3:1,4:0}, {1:1,2:1,3:1,4:0}, {1:0,2:1,3:1,4:1},{1:1,2:1,3:1,4:1}]: #there are walls in 3,2
+                                for boarders in [(0,0,0,0)]: #there are no boarders in 3,2
+                                    for walls in [(0,1,1,0),(1,1,1,0),(0,1,1,1),(1,1,1,1)]: #there are walls in 3,2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(4)
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:1,2:0,3:1,4:0}, {1:0,2:0,3:1,4:1},{1:1,2:0,3:1,4:1}]: #there are walls in 3 but not in 2
+                                    for walls in [(0,1,0,0), (1,0,1,0), (0,0,1,1),(1,0,1,1)]: #there are walls in 3 but not in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L' #(5)
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1}, {1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:0,4:1},
-                                                    {1:1,2:1,3:0,4:1},{1:0,2:0,3:0,4:0}]: #there are walls no walls in 3
+                                    for walls in [(1,0,0,0),(0,1,0,0), (0,0,0,1), (1,1,0,0), (1,0,0,1), (0,1,0,1),(1,1,0,1),(0,0,0,0)]: #there are walls no walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D' #(6)
-                                for boarders in [{1:0,2:1,3:0,4:0}]: #there are no boarders in 3 but there are in 2
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:0,2:0,3:0,4:1},  {1:1,2:0,3:0,4:1}, {1:0,2:0,3:0,4:0}]: #there are walls no walls in 3
+                                for boarders in [(0,1,0,0)]: #there are no boarders in 3 but there are in 2
+                                    for walls in [(1,0,0,0), (0,0,0,1),  (1,0,0,1), (0,0,0,0)]: #there are walls no walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D' #(7)
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:1,2:0,3:1,4:0}, {1:0,2:0,3:1,4:1},{1:1,2:0,3:1,4:1}]: #there are walls in 3
+                                    for walls in [(0,1,0,0), (1,0,1,0), (0,0,1,1),(1,0,1,1)]: #there are walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(8)
 
-                            for monster in [{1:0,2:1,3:1,4:0}]: #there are monsters in 2,3
-                                for boarders in [{1:1,2:0,3:0,4:1}]: #there is boarder in 1,4
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:1,3:0,4:0},{1:0,2:1,3:1,4:0}]: #there is no walls in 1,4 because there are boasrders
+                            for monster in [(0,1,1,0)]: #there are monsters in 2,3
+                                for boarders in [(1,0,0,1)]: #there is boarder in 1,4
+                                    for walls in [(0,0,0,0), (0,1,0,0), (0,1,0,0),(0,1,1,0)]: #there is no walls in 1,4 because there are boasrders
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:1,2:0,3:0,4:0}]: #there is boarder in 1 but not in 4
-                                    for walls in [{1:0,2:0,3:0,4:1}, {1:0,2:0,3:1,4:1}, {1:0,2:1,3:0,4:1},{1:0,2:1,3:1,4:1}]: #there are walls in 4
+                                for boarders in [(1,0,0,0)]: #there is boarder in 1 but not in 4
+                                    for walls in [(0,0,0,1), (0,0,1,1), (0,1,0,1),(0,1,1,1)]: #there are walls in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(2)
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:1,3:0,4:0},{1:0,2:1,3:1,4:0}]: #there are no walls in 4
+                                    for walls in [(0,0,0,0), (0,1,0,0), (0,1,0,0),(0,1,1,0)]: #there are no walls in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R' #(3)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there are no boarders in 1,4
-                                    for walls in [{1:1,2:0,3:0,4:1}, {1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1},{1:1,2:1,3:1,4:1}]: #there are walls in 1,4
+                                for boarders in [(0,0,0,0)]: #there are no boarders in 1,4
+                                    for walls in [(1,0,0,1), (1,0,1,1), (1,1,0,1),(1,1,1,1)]: #there are walls in 1,4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(4)
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:1,3:0,4:0},{1:1,2:1,3:1,4:0}]: #there are walls in 1 but not in 4
+                                    for walls in [(1,0,0,0), (1,0,1,0), (1,1,0,0),(1,1,1,0)]: #there are walls in 1 but not in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R' #(5)
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:0,3:1,4:1}, {1:0,2:1,3:0,4:1},
-                                                    {1:0,2:1,3:1,4:1},{1:0,2:0,3:0,4:0}]: #there are walls no walls in 1
+                                    for walls in [(0,1,0,0),(0,1,0,0), (0,0,0,1),(0,1,1,0), (0,0,1,1), (0,1,0,1),(0,1,1,1),(0,0,0,0)]: #there are walls no walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U' #(6)
-                                for boarders in [{1:0,2:0,3:0,4:1}]: #there are no boarders in 1 but there are in 4
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:0,2:1,3:0,4:0},{1:0,2:1,3:1,4:0},{1:0,2:0,3:0,4:0}]: #there are walls no walls in 1
+                                for boarders in [(0,0,0,1)]: #there are no boarders in 1 but there are in 4
+                                    for walls in [(0,1,0,0),(0,1,0,0),(0,1,1,0),(0,0,0,0)]: #there are walls no walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U' #(6)
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:1,3:0,4:0},{1:1,2:1,3:1,4:0}]: #there are walls in 1
+                                    for walls in [(1,0,0,0), (1,0,1,0), (1,1,0,0),(1,1,1,0)]: #there are walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(8)
 
-                            for monster in [{1:0,2:0,3:1,4:1}]: #there are monsters in 3,4
-                                for boarders in [{1:1,2:1,3:0,4:0}]: #there is boarder in 1,2
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},{1:0,2:0,3:1,4:1}]: #there is no walls in 1,2 because there are boasrders
+                            for monster in [(0,0,1,1)]: #there are monsters in 3,4
+                                for boarders in [(1,1,0,0)]: #there is boarder in 1,2
+                                    for walls in [(0,0,0,0), (0,1,0,0), (0,0,0,1),(0,0,1,1)]: #there is no walls in 1,2 because there are boasrders
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:1,2:0,3:0,4:0}]: #there is boarder in 1 but not in 2
-                                    for walls in [{1:0,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1}, {1:0,2:1,3:0,4:0},{1:0,2:1,3:1,4:0}]: #there are walls in 2
+                                for boarders in [(1,0,0,0)]: #there is boarder in 1 but not in 2
+                                    for walls in [(0,1,0,1),(0,1,1,1), (0,1,0,0),(0,1,1,0)]: #there are walls in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(2)
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},{1:0,2:0,3:1,4:1}]: #there are no walls in 2
+                                    for walls in [(0,0,0,0), (0,1,0,0), (0,0,0,1),(0,0,1,1)]: #there are no walls in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L' #(3)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there are no boarders in 1,2
-                                    for walls in [{1:1,2:1,3:0,4:0}, {1:1,2:1,3:1,4:0}, {1:1,2:1,3:0,4:1},{1:1,2:1,3:1,4:1}]: #there are walls in 1,2
+                                for boarders in [(0,0,0,0)]: #there are no boarders in 1,2
+                                    for walls in [(1,1,0,0),(1,1,1,0), (1,1,0,1),(1,1,1,1)]: #there are walls in 1,2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(4)
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:0,3:0,4:1},{1:1,2:0,3:1,4:1}]: #there are walls in 1 but not in 2
+                                    for walls in [(1,0,0,0), (1,0,1,0), (1,0,0,1),(1,0,1,1)]: #there are walls in 1 but not in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L' #(5)
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:0,3:1,4:1}, {1:0,2:1,3:0,4:1},
-                                                    {1:0,2:1,3:1,4:1},{1:0,2:0,3:0,4:0}]: #there are walls no walls in 1
+                                    for walls in [(0,1,0,0),(0,1,0,0), (0,0,0,1),(0,1,1,0), (0,0,1,1), (0,1,0,1),(0,1,1,1),(0,0,0,0)]: #there are walls no walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U' #(6)
-                                for boarders in [{1:0,2:1,3:0,4:0}]: #there are no boarders in 1 but there are in 2
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},  {1:0,2:0,3:1,4:1},{1:0,2:0,3:0,4:0}]: #there are no walls in 1
+                                for boarders in [(0,1,0,0)]: #there are no boarders in 1 but there are in 2
+                                    for walls in [(0,1,0,0), (0,0,0,1),  (0,0,1,1),(0,0,0,0)]: #there are no walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U' #(6)
-                                    for walls in [{1:1,2:0,3:1,4:1}, {1:1,2:0,3:0,4:1}, {1:1,2:0,3:0,4:0},{1:1,2:0,3:1,4:0}]: #there are walls in 1
+                                    for walls in [(1,0,1,1), (1,0,0,1), (1,0,0,0),(1,0,1,0)]: #there are walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(8)
 
-                            for monster in [{1:0,2:1,3:0,4:1}]: #there are monsters in 2,4
-                                for boarders in [{1:1,2:0,3:1,4:0}]: #there is boarder in 1,3
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1},{1:0,2:1,3:0,4:1}]: #there is no walls in 1,3 because there are boasrders
+                            for monster in [(0,1,0,1)]: #there are monsters in 2,4
+                                for boarders in [(1,0,1,0)]: #there is boarder in 1,3
+                                    for walls in [(0,0,0,0), (0,1,0,0), (0,0,0,1),(0,1,0,1)]: #there is no walls in 1,3 because there are boasrders
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:1,2:0,3:0,4:0}]: #there is boarder in 1 but not in 3
-                                    for walls in [{1:0,2:0,3:1,4:1}, {1:0,2:1,3:1,4:1}, {1:0,2:0,3:1,4:0},{1:0,2:1,3:1,4:0}]: #there are walls in 3
+                                for boarders in [(1,0,0,0)]: #there is boarder in 1 but not in 3
+                                    for walls in [(0,0,1,1),(0,1,1,1), (0,1,0,0),(0,1,1,0)]: #there are walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(2)
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1},{1:0,2:1,3:0,4:1}]: #there are no walls in 3
+                                    for walls in [(0,0,0,0), (0,1,0,0), (0,0,0,1),(0,1,0,1)]: #there are no walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D' #(3)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there are no boarders in 1,3
-                                    for walls in [{1:1,2:0,3:1,4:0}, {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1},{1:1,2:1,3:1,4:1}]: #there are walls in 1,3
+                                for boarders in [(0,0,0,0)]: #there are no boarders in 1,3
+                                    for walls in [(1,0,1,0),(1,1,1,0), (1,0,1,1),(1,1,1,1)]: #there are walls in 1,3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(4)
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1},{1:1,2:1,3:0,4:1}]: #there are walls in 1 but not in 3
+                                    for walls in [(1,0,0,0), (1,1,0,0), (1,0,0,1),(1,1,0,1)]: #there are walls in 1 but not in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D' #(5)
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:0,3:1,4:1}, {1:0,2:1,3:0,4:1},
-                                                    {1:0,2:1,3:1,4:1},{1:0,2:0,3:0,4:0}]: #there are walls no walls in 1
+                                    for walls in [(0,1,0,0),(0,1,0,0), (0,0,0,1),(0,1,1,0), (0,0,1,1), (0,1,0,1),(0,1,1,1),(0,0,0,0)]: #there are walls no walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U' #(6)
-                                for boarders in [{1:0,2:0,3:1,4:0}]: #there are no boarders in 1 but there are in 3
-                                    for walls in [{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1},  {1:0,2:1,3:0,4:1},{1:0,2:0,3:0,4:0}]: #there are no walls in 1
+                                for boarders in [(0,1,0,0)]: #there are no boarders in 1 but there are in 3
+                                    for walls in [(0,1,0,0), (0,0,0,1),  (0,1,0,1),(0,0,0,0)]: #there are no walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U' #(6)
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1},{1:1,2:1,3:0,4:1}]: #there are walls in 1
+                                    for walls in [(1,0,0,0), (1,1,0,0), (1,0,0,1),(1,1,0,1)]: #there are walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(8)
 
-                            for monster in [{1:0,2:0,3:1,4:1}]: #there are monsters in 1,3
-                                for boarders in [{1:0,2:1,3:0,4:1}]: #there is boarder in 4,2
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:1,2:0,3:0,4:0},{1:1,2:0,3:1,4:0}]: #there is no walls in 4,2 because there are boasrders
+                            for monster in [(0,0,1,1)]: #there are monsters in 1,3
+                                for boarders in [(0,1,0,1)]: #there is boarder in 4,2
+                                    for walls in [(0,0,0,0), (0,1,0,0), (1,0,0,0),(1,0,1,0)]: #there is no walls in 4,2 because there are boasrders
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:0,2:0,3:0,4:1}]: #there is boarder in 4 but not in 2
-                                    for walls in [{1:1,2:1,3:0,4:0}, {1:1,2:1,3:1,4:0}, {1:0,2:1,3:0,4:0},{1:0,2:1,3:1,4:0}]: #there are walls in 2
+                                for boarders in [(0,0,0,1)]: #there is boarder in 4 but not in 2
+                                    for walls in [(1,1,0,0),(1,1,1,0), (0,1,0,0),(0,1,1,0)]: #there are walls in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(2)
-                                    for walls in [{1:0,2:0,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:1,2:0,3:0,4:0},{1:1,2:0,3:1,4:0}]: #there are no walls in 2
+                                    for walls in [(0,0,0,0), (0,1,0,0), (1,0,0,0),(1,0,1,0)]: #there are no walls in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L' #(3)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there are no boarders in 1,2
-                                    for walls in [{1:0,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1}, {1:1,2:1,3:0,4:1},{1:1,2:1,3:1,4:1}]: #there are walls in 2,4
+                                for boarders in [(0,0,0,0)]: #there are no boarders in 1,2
+                                    for walls in [(0,1,0,1),(0,1,1,1), (1,1,0,1),(1,1,1,1)]: #there are walls in 2,4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(4)
-                                    for walls in [{1:0,2:0,3:0,4:1}, {1:0,2:0,3:1,4:1}, {1:1,2:0,3:0,4:1},{1:1,2:0,3:1,4:1}]: #there are walls in 4 but not in 2
+                                    for walls in [(0,0,0,1), (0,0,1,1), (1,0,0,1),(1,0,1,1)]: #there are walls in 4 but not in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L' #(5)
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:0,2:1,3:0,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:1,3:1,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:1,3:0,4:0},
-                                                    {1:0,2:1,3:1,4:1},{1:0,2:0,3:0,4:0}]: #there are walls no walls in 4
+                                    for walls in [(0,1,0,0),(0,1,0,0), (1,0,0,0),(0,1,1,0), (1,0,1,0), (1,1,0,0),(0,1,1,1),(0,0,0,0)]: #there are walls no walls in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R' #(6)
-                                for boarders in [{1:0,2:1,3:0,4:0}]: #there are no boarders in 1 but there are in 2
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:1,2:0,3:0,4:0},  {1:1,2:0,3:1,4:0},{1:0,2:0,3:0,4:0}]: #there are no walls in 4
+                                for boarders in [(0,1,0,0)]: #there are no boarders in 1 but there are in 2
+                                    for walls in [(0,1,0,0), (1,0,0,0),  (1,0,1,0),(0,0,0,0)]: #there are no walls in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R' #(6)
-                                    for walls in [{1:0,2:0,3:0,4:1}, {1:0,2:0,3:1,4:1}, {1:1,2:0,3:0,4:1},{1:1,2:0,3:1,4:1}]: #there are walls in 4
+                                    for walls in [(0,0,0,1), (0,0,1,1), (1,0,0,1),(1,0,1,1)]: #there are walls in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(8)
 
                         if NumMonster == 3:#if there are 3 monsters in the board
-                            for monster in [{1:1,2:1,3:1,4:0}]: #there are monsters in 1,2,3
-                                for boarders in [{1:0,2:0,3:0,4:1}]: #there is boarder in 4
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0},{1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:0,2:1,3:1,4:0},
-                                                    {1:1,2:1,3:1,4:0}, {1:0,2:0,3:0,4:0}]: #there can't be walls in 4
+                            for monster in [(1,1,1,0)]: #there are monsters in 1,2,3
+                                for boarders in [(0,0,0,1)]: #there is boarder in 4
+                                    for walls in [(1,0,0,0),(0,1,0,0), (0,1,0,0),(1,1,0,0), (1,0,1,0),(0,1,1,0),(1,1,1,0), (0,0,0,0)]: #there can't be walls in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there is no boarder in 4
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0},{1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:0,2:1,3:1,4:0},
-                                                    {1:1,2:1,3:1,4:0}, {1:0,2:0,3:0,4:0}]:#there are no walls in 4
+                                for boarders in [(0,0,0,0)]: #there is no boarder in 4
+                                    for walls in [(1,0,0,0),(0,1,0,0), (0,1,0,0),(1,1,0,0), (1,0,1,0),(0,1,1,0),(1,1,1,0), (0,0,0,0)]:#there are no walls in 4
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'R' #(2)
-                                    for walls in [{1:0,2:0,3:0,4:1},{1:1,2:0,3:0,4:1}, {1:0,2:1,3:0,4:1}, {1:0,2:0,3:1,4:1},{1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1},
-                                                    {1:1,2:1,3:1,4:1}]:#there are walls in 4:
+                                    for walls in [(0,0,0,1),(1,0,0,1), (0,1,0,1), (0,0,1,1),(1,0,1,1), (1,1,0,1),(0,1,1,1),(1,1,1,1)]:#there are walls in 4:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(3)
 
-                            for monster in [{1:1,2:1,3:0,4:1}]: #there are monsters in 1,2,4
-                                for boarders in [{1:0,2:0,3:1,4:0}]: #there is boarder in 3
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1},
-                                        {1:1,2:1,3:0,4:0},{1:1,2:0,3:0,4:1}, {1:0,2:1,3:0,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:0,3:0,4:0}]: #there can't be walls in 3
+                            for monster in [(1,1,0,1)]: #there are monsters in 1,2,4
+                                for boarders in [(0,1,0,0)]: #there is boarder in 3
+                                    for walls in [(1,0,0,0),(0,1,0,0), (0,0,0,1),(1,1,0,0),(1,0,0,1), (0,1,0,1), (1,1,0,1), (0,0,0,0)]: #there can't be walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there is no boarder in 3
-                                    for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1},
-                                                    {1:1,2:1,3:0,4:0},{1:1,2:0,3:0,4:1}, {1:0,2:1,3:0,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:0,3:0,4:0}]: #there are no walls in 3
+                                for boarders in [(0,0,0,0)]: #there is no boarder in 3
+                                    for walls in [(1,0,0,0),(0,1,0,0), (0,0,0,1),(1,1,0,0),(1,0,0,1), (0,1,0,1), (1,1,0,1), (0,0,0,0)]: #there are no walls in 3
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'D' #(2)
-                                    for walls in [{1:0,2:0,3:1,4:0}, {1:1,2:0,3:1,4:0},{1:0,2:1,3:1,4:0}, {1:0,2:0,3:1,4:1},
-                                        {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1},  {1:0,2:1,3:1,4:1},{1:1,2:1,3:1,4:1}]:#there are walls in 3:
+                                    for walls in [(0,1,0,0), (1,0,1,0),(0,1,1,0), (0,0,1,1),(1,1,1,0), (1,0,1,1), (0,1,1,1),(1,1,1,1)]:#there are walls in 3:
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(3)
 
-                            for monster in [{1:0,2:1,3:1,4:1}]: #there are monsters in 2,3,4
-                                for boarders in [{1:1,2:0,3:0,4:0}]: #there is boarder in 1
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1},
-                                        {1:0,2:1,3:1,4:0},{1:0,2:0,3:1,4:1}, {1:0,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1}, {1:0,2:0,3:0,4:0}]: #there can't be walls in 1
+                            for monster in [(0,1,1,1)]: #there are monsters in 2,3,4
+                                for boarders in [(1,0,0,0)]: #there is boarder in 1
+                                    for walls in [(0,1,0,0),(0,1,0,0), (0,0,0,1),(0,1,1,0),(0,0,1,1), (0,1,0,1),(0,1,1,1), (0,0,0,0)]: #there can't be walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there is no boarder in 1
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:0,4:1},
-                                                    {1:0,2:1,3:1,4:0},{1:0,2:0,3:1,4:1}, {1:0,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1}, {1:0,2:0,3:0,4:0}]: #there are no walls in 1
+                                for boarders in [(0,0,0,0)]: #there is no boarder in 1
+                                    for walls in [(0,1,0,0),(0,1,0,0), (0,0,0,1),(0,1,1,0),(0,0,1,1), (0,1,0,1),(0,1,1,1), (0,0,0,0)]: #there are no walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'U' #(2)
-                                    for walls in [{1:1,2:0,3:0,4:0}, {1:1,2:0,3:1,4:0},{1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1},
-                                        {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1},{1:1,2:1,3:1,4:1}]:#there are walls in 1
+                                    for walls in [(1,0,0,0), (1,0,1,0),(1,1,0,0), (1,0,0,1),(1,1,1,0), (1,0,1,1), (1,1,0,1),(1,1,1,1)]:#there are walls in 1
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(3)
 
-                            for monster in [{1:1,2:0,3:1,4:1}]: #there are monsters in 1,3,4
-                                for boarders in [{1:0,2:1,3:0,4:0}]: #there is boarder in 2
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:1,2:0,3:0,4:0}, {1:0,2:0,3:0,4:1},
-                                        {1:1,2:0,3:1,4:0},{1:0,2:0,3:1,4:1}, {1:1,2:0,3:0,4:1}, {1:1,2:0,3:1,4:1}, {1:0,2:0,3:0,4:0}]: #there can't be walls in 2
+                            for monster in [(1,0,1,1)]: #there are monsters in 1,3,4
+                                for boarders in [(0,1,0,0)]: #there is boarder in 2
+                                    for walls in [(0,1,0,0),(1,0,0,0), (0,0,0,1),(1,0,1,0),(0,0,1,1), (1,0,0,1), (1,0,1,1), (0,0,0,0)]: #there can't be walls in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(1)
-                                for boarders in [{1:0,2:0,3:0,4:0}]: #there is no boarder in 2
-                                    for walls in [{1:0,2:0,3:1,4:0},{1:1,2:0,3:0,4:0}, {1:0,2:0,3:0,4:1},
-                                                    {1:1,2:0,3:1,4:0},{1:0,2:0,3:1,4:1}, {1:1,2:0,3:0,4:1}, {1:1,2:0,3:1,4:1}, {1:0,2:0,3:0,4:0}]: #there are no walls in 2
+                                for boarders in [(0,0,0,0)]: #there is no boarder in 2
+                                    for walls in [(0,1,0,0),(1,0,0,0), (0,0,0,1),(1,0,1,0),(0,0,1,1), (1,0,0,1), (1,0,1,1), (0,0,0,0)]: #there are no walls in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'L' #(2)
-                                    for walls in [{1:0,2:1,3:0,4:0}, {1:0,2:1,3:1,4:0},{1:1,2:1,3:0,4:0}, {1:0,2:1,3:0,4:1},
-                                        {1:1,2:1,3:1,4:0}, {1:0,2:1,3:1,4:1}, {1:1,2:1,3:0,4:1},{1:1,2:1,3:1,4:1}]:#there are walls in 2
+                                    for walls in [(0,1,0,0),(0,1,1,0),(1,1,0,0), (0,1,0,1),(1,1,1,0),(0,1,1,1), (1,1,0,1),(1,1,1,1)]:#there are walls in 2
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B' #(3)
 
                 for x,y in [(-2,0),(0,-2),(2,0),(0,2),(-1,1),(-1,-1),(1,1),(1,-1)]: #the bomb is 2 steps from bomberman--> blow it
                     for NumMonster in [1,2,3,4]: #no mattar how many monsters are in the +
-                        for monster in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},
-                                    {1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:0,3:1,4:1},
-                                    {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1}]:
-                            for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},
-                                        {1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:0,3:1,4:1},
-                                        {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1},
-                                        {1:1,2:1,3:1,4:1}, {1:0,2:0,3:0,4:0}]:
-                                for boarders in [{1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:0,3:1,4:1}, {1:0,2:1,3:1,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:1,3:0,4:0},
-                                                 {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1}, {1:0,2:0,3:0,4:0}]:
+                        for monster in [(1,0,0,0),(0,1,0,0),(0,1,0,0),(0,0,0,1),(1,1,0,0),(1,0,1,0),(1,0,0,1),(0,1,1,0),(0,1,0,1),(0,0,1,1),(1,1,1,0),(1,0,1,1),(1,1,0,1),(0,1,1,1)]:
+                            for walls in [(1,0,0,0),(0,1,0,0),(0,1,0,0),(0,0,0,1),(1,1,0,0),(1,0,1,0),(1,0,0,1),(0,1,1,0),(0,1,0,1),(0,0,1,1),(1,1,1,0),(1,0,1,1),(1,1,0,1),(0,1,1,1),(1,1,1,1),(0,0,0,0)]:
+                                for boarders in [(1,1,0,0),(1,0,0,1),(0,0,1,1),(0,1,1,0),(1,0,0,0),(0,1,0,0),(0,1,0,0),(0,0,0,1),(0,0,0,0)]:
                                     self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'B'
 
 
                 for x,y in [(-1,0),(0,-1),(1,0),(0,1)]: #the bomb is 1 step from bomberman--> go away from it if you can --> blow it if you can't escape
                     for NumMonster in [1,2,3]: # there is 1,2,3 monster
-                        for monster in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},
-                                        {1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:0,3:1,4:1},
-                                        {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1}]:
-                            for walls in [{1:1,2:0,3:0,4:0},{1:0,2:1,3:0,4:0}, {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1},
-                                        {1:1,2:1,3:0,4:0}, {1:1,2:0,3:1,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:1,3:1,4:0}, {1:0,2:1,3:0,4:1}, {1:0,2:0,3:1,4:1},
-                                        {1:1,2:1,3:1,4:0}, {1:1,2:0,3:1,4:1}, {1:1,2:1,3:0,4:1}, {1:0,2:1,3:1,4:1},
-                                        {1:1,2:1,3:1,4:1}, {1:0,2:0,3:0,4:0}]:
-                                for boarders in [{1:1,2:1,3:0,4:0}, {1:1,2:0,3:0,4:1}, {1:0,2:0,3:1,4:1}, {1:0,2:1,3:1,4:0}, {1:1,2:0,3:0,4:0}, {1:0,2:1,3:0,4:0},
-                                                 {1:0,2:0,3:1,4:0}, {1:0,2:0,3:0,4:1}, {1:0,2:0,3:0,4:0}]:
+                        for monster in [(1,0,0,0),(0,1,0,0),(0,1,0,0),(0,0,0,1),(1,1,0,0),(1,0,1,0),(1,0,0,1),(0,1,1,0),(0,1,0,1),(0,0,1,1),(1,1,1,0),(1,0,1,1),(1,1,0,1),(0,1,1,1)]:
+                            for walls in [(1,0,0,0),(0,1,0,0),(0,1,0,0),(0,0,0,1),(1,1,0,0), (1,0,1,0),(1,0,0,1),(0,1,1,0),(0,1,0,1),(0,0,1,1),(1,1,1,0),(1,0,1,1),(1,1,0,1),(0,1,1,1),(1,1,1,1),(0,0,0,0)]:
+                                for boarders in [(1,1,0,0),(1,0,0,1),(0,0,1,1),(0,1,1,0),(1,0,0,0),(0,1,0,0),(0,1,0,0),(0,0,0,1),(0,0,0,0)]:
                                     if (x,y) == (-1,0):
                                         self.Policy[((1,x,y),NumMonster,monster,walls,boarders)] = 'Check234'
                                     if (x,y) == (0,-1):
