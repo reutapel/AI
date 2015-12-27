@@ -419,6 +419,18 @@ class Controller:
                     if zone == 3 and CellZone4 == 10:
                         if self.LastAction in [None, 'R', 'W','B', 'S']:
                             return 'R'
+
+            for zone in xrange(0,4):
+                if Monsters[zone] == 0:
+                    if zone == 0 and CellZone1 == 10:
+                        return 'U'
+                    if zone == 1 and CellZone2 == 10:
+                        return 'L'
+                    if zone == 2 and CellZone3 == 10:
+                        return 'D'
+                    if zone == 3 and CellZone4 == 10:
+                        return 'R'
+
         self.LastAction = 'S'
         return 'S'
 
@@ -684,11 +696,30 @@ class Controller:
             self.LastAction = 'W'
 
     def CheckAction(self, action, board):
+        CellZone1 = 0
+        CellZone2 = 0
+        CellZone3 = 0
+        CellZone4 = 0
         Actions = ('L', 'D', 'R', 'U')
         ActionDict = dict(zip(Actions,((0,-1),(1,0),(0,1),(-1,0))))
         MoveCheck = ActionDict[action][0] + self.BMx,  ActionDict[action][1] + self.BMy
         if self.in_bound(MoveCheck[0], MoveCheck[1]) == True:
             if board[MoveCheck[0]][MoveCheck[1]] == 10:
+                if self.in_bound(self.BMx, self.BMy) == True and board[self.BMx][self.BMy] == 88:
+                    for CellZone, x,y in [(1, -1,0), (2,0,-1), (3, 1,0), (4, 0,1)]:
+                        if self.in_bound(MoveCheck[0] + x, MoveCheck[1] + y) == True:
+                            if CellZone == 1:
+                                CellZone1 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                continue
+                            if CellZone == 2:
+                                CellZone2 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                continue
+                            if CellZone == 3:
+                                CellZone3 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                continue
+                            if CellZone == 4:
+                                CellZone4 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                continue
                 self.LastAction = action
         else:
             self.LastAction = 'W'
