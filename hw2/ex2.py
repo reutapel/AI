@@ -256,8 +256,7 @@ class Controller:
             # else:
             # if self.LastAction == 'W':
             #     return self.LastAction
-            if self.LastAction == None:
-                return self.LastAction
+            self.UpdateBombermanLocation(board)
             return self.LastAction
         else:
             for x, y in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
@@ -267,10 +266,11 @@ class Controller:
                         if board[self.BMx][self.BMy] == 88:
                             self.Bombx, self.Bomby = self.BMx, self.BMy
                         self.LastAction = self.GetNextMove(board)
-                        if self.LastAction == None:
-                            return self.LastAction
+                        # if self.LastAction == None:
+                        #     return self.LastAction
+                        self.UpdateBombermanLocation(board)
                         return self.LastAction
-        self.LastAction = 'W'
+        self.UpdateBombermanLocation(board)
         return self.LastAction
 
     def GetNextMove(self, board):
@@ -483,8 +483,8 @@ class Controller:
         return self.LastAction
 
     def UpdateBombermanLocation(self, board):
-        Actions = ('L', 'D', 'R', 'U', 'W', 'S', 'B')
-        ActionDict = dict(zip(Actions,((0,-1),(1,0),(0,1),(-1,0), (0,0), (0,0), (0,0))))
+        Actions = ('L', 'D', 'R', 'U', 'W', 'S', 'B', None)
+        ActionDict = dict(zip(Actions,((0,-1),(1,0),(0,1),(-1,0), (0,0), (0,0), (0,0), (0,0))))
         MoveCheck = ActionDict[self.LastAction][0] + self.BMx,  ActionDict[self.LastAction][1] + self.BMy
 
         if not self.in_bound(MoveCheck[0], MoveCheck[1]):
@@ -494,6 +494,10 @@ class Controller:
         Square = board[MoveCheck[0]][MoveCheck[1]]
 
         if Square not in (10, 18, 88): #this is illegal action
+            self.LastAction = 'W'
+            return False
+
+        if self.LastAction == None:
             self.LastAction = 'W'
             return False
 
