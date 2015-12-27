@@ -181,7 +181,8 @@ class Controller:
             self.adj[(row,col)] = TempNeighboorsList
 
 
-    def dijkstra(self):
+    def dijkstra(self, board):
+        self.UpdateMonstersLocation(board)
         Q = []     # priority queue of items; note item is mutable.
         d = {(self.BMx, self.BMy): 0} # vertex -> minimal distance
         Qd = {}    # vertex -> [d[v], parent_v, v]
@@ -237,9 +238,10 @@ class Controller:
             self.LastAction == 'W'
         if self.LastAction == 'S':
             self.LastAction == 'S'
-        if self.LastAction == 'B' and board[self.Bombx][self.Bomby] == 10:
-            self.Bombx, self.Bomby = None, None
-        if board[self.BMx][self.BMy] in [18,88]:
+        if self.LastAction == 'B' and self.in_bound(self.Bombx, self.Bomby):
+            if board[self.Bombx][self.Bomby] == 10:
+                self.Bombx, self.Bomby = None, None
+        if self.in_bound(self.BMx, self.BMy) and board[self.BMx][self.BMy] in [18,88]:
             if self.LastAction == 'S' and board[self.BMx][self.BMy] == 88:
                 self.Bombx, self.Bomby = self.BMx, self.BMy
             self.GetNextMove(board)
@@ -264,9 +266,8 @@ class Controller:
         Bombs, NumMonsters, Monsters, Walls = self.FillPlus(board, Boarders)
         if NumMonsters == 0:
             if self.UsePolicyLastMove:
-                self.UpdateMonstersLocation(board)
-                self.Fifo.
-                self.dijkstra()
+                # self.UpdateMonstersLocation(board)
+                self.dijkstra(board)
                 self.UsePolicyLastMove = False
             NextMove = self.Fifo.pop()
             if NextMove == None: #FIFO is empty
@@ -277,8 +278,8 @@ class Controller:
                 #         self.LastAction = 'W'
                 #     # return self.LastAction
                 # else:
-                self.UpdateMonstersLocation(board)
-                self.dijkstra()
+                # self.UpdateMonstersLocation(board)
+                self.dijkstra(board)
                 NextMove = self.Fifo.pop()
                 if NextMove == 'S' and self.Bombx is not None:
                     NextMove = self.Fifo.pop()
