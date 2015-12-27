@@ -13,7 +13,7 @@ def evaluate(board ,steps):
     
     print "Controller initialization took: ", t2 - t1, " seconds."
     print "The average score for the problem is:", 
-    print run_bomberman.evaluate_policy(controller, 3000, visualize = False)
+    print run_bomberman.evaluate_policy(controller, 3000, visualize = True)
 
 def main():
     """Print students id's and run evaluation on a given game"""
