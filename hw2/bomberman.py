@@ -205,6 +205,7 @@ class Game:
                     for c in row:
                         print c,
                     print
+                print self.reward
                                
         return self.reward
 

@@ -47,10 +47,15 @@ class Controller:
         t1 = time.time()
         self.board = board
         self.Policy = {}
+        self.reward = 0
         self.BMx = None
         self.BMy = None
+        self.InitBMx = None
+        self.InitBMy = None
         self.Bombx = None
         self.Bomby = None
+        self.InitBombx = None
+        self.InitBomby = None
         self.Monsters = {}
         self.N = len(board)
         self.M = len(board[1])
@@ -62,20 +67,11 @@ class Controller:
         self.costs = {}
         self.Fifo = FIFOQueue()
         self.UsePolicyLastMove = False
-        t2 = time.time()
-        print t2-t1
-        t3 = time.time()
-        self.BuildGraph()
-        t4 = time.time()
-        print t4-t3
-        t7 = time.time()
-        # self.dijkstra()
-        t8 = time.time()
-        print t8-t7
-        t5 = time.time()
         self.CreatePolicy()
-        t6 = time.time()
-        print t6-t5
+        t2 = time.time()
+        if t2-t1 > 55:
+            return
+        self.BuildGraph()
         return
 
     def MinMonster(self):
@@ -100,9 +96,12 @@ class Controller:
                 cell = self.board[row][col]
                 if cell in [10, 12, 18, 80, 88, 90]:
                     self.UpdateAdjcosts(row,col)
-                    if cell == 18:
-                        self.BMx = row
-                        self.BMy = col
+                    if cell in [18, 88]:
+                        self.BMx, self.InitBMx = row, row
+                        self.BMy, self.InitBMy = col, col
+                        if cell == 88:
+                            self.Bombx, self.InitBMx = row, row
+                            self.Bomby, self.InitBMy = col, col
                     elif cell == 12:
                         TempMonsters[i] = [row,col]
                         i+=1
@@ -239,8 +238,20 @@ class Controller:
 
     def choose_next_move(self, board, steps, reward):
         "Choose next action for Bomberman given the current state of the board."
-        if self.LastAction == 'W':
-            self.LastAction == 'W'
+
+        if steps == self.Steps - 1:
+            self.BMx, self.BMy = self.InitBMx, self.InitBMy
+            self.Bombx, self.Bomby = self.InitBombx, self.InitBomby
+            self.LastAction ='W'
+            self.UsePolicyLastMove = False
+        if reward - self.reward <= -5:
+            self.BMx, self.BMy = self.InitBMx, self.InitBMy
+            self.Bombx, self.Bomby = self.InitBombx, self.InitBomby
+            self.LastAction ='W'
+            self.UsePolicyLastMove = False
+        self.reward = reward
+        # if self.LastAction == 'W':
+        #     self.LastAction == 'W'
         if self.LastAction == 'S':
             self.LastAction == 'S'
         # if self.LastAction == 'B' and self.in_bound(self.Bombx, self.Bomby):
@@ -256,7 +267,6 @@ class Controller:
             # else:
             # if self.LastAction == 'W':
             #     return self.LastAction
-            self.UpdateBombermanLocation(board)
             return self.LastAction
         else:
             for x, y in [(1, 0), (0, 1), (-1, 0), (0, -1)]:
@@ -268,8 +278,8 @@ class Controller:
                         self.LastAction = self.GetNextMove(board)
                         # if self.LastAction == None:
                         #     return self.LastAction
-                        self.UpdateBombermanLocation(board)
                         return self.LastAction
+        self.LastAction ='W'
         self.UpdateBombermanLocation(board)
         return self.LastAction
 
