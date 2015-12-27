@@ -233,8 +233,10 @@ class Controller:
 
     def choose_next_move(self, board, steps, reward):
         "Choose next action for Bomberman given the current state of the board."
-        # if self.LastAction == 'WM':
-        #     self.LastAction == 'WM'
+        if self.LastAction == 'W':
+            self.LastAction == 'W'
+        if self.LastAction == 'S':
+            self.LastAction == 'S'
         if self.LastAction == 'B' and board[self.Bombx][self.Bomby] == 10:
             self.Bombx, self.Bomby = None, None
         if board[self.BMx][self.BMy] in [18,88]:
@@ -262,6 +264,8 @@ class Controller:
         Bombs, NumMonsters, Monsters, Walls = self.FillPlus(board, Boarders)
         if NumMonsters == 0:
             if self.UsePolicyLastMove:
+                self.UpdateMonstersLocation(board)
+                self.Fifo.
                 self.dijkstra()
                 self.UsePolicyLastMove = False
             NextMove = self.Fifo.pop()
@@ -284,14 +288,28 @@ class Controller:
                         self.LastAction = 'W'
                 else:
                     self.LastAction = NextMove
+                    while not self.UpdateBombermanLocation(board):
+                        NextMove = self.Fifo.pop()
+                        if NextMove == 'S' and self.Bombx is not None:
+                            NextMove = self.Fifo.pop()
+                        self.LastAction = NextMove
+
                     if not self.UpdateBombermanLocation(board):
                         self.LastAction = 'W'
-                    # return self.LastAction
+                        return self.LastAction
             else:
+                if NextMove == 'S' and self.Bombx is not None:
+                    NextMove = self.Fifo.pop()
                 self.LastAction = NextMove
+                while not self.UpdateBombermanLocation(board):
+                    NextMove = self.Fifo.pop()
+                    if NextMove == 'S' and self.Bombx is not None:
+                        NextMove = self.Fifo.pop()
+                    self.LastAction = NextMove
+
                 if not self.UpdateBombermanLocation(board):
                     self.LastAction = 'W'
-                # return self.LastAction
+                    return self.LastAction
         else:
             self.UsePolicyLastMove = True
             Bombs = tuple(Bombs)
