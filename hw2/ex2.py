@@ -54,7 +54,7 @@ class Controller:
         self.Fifo = FIFOQueue()
         self.BuildGraph()
         self.dijkstra()
-        self.CreatePolicy()
+        # self.CreatePolicy()
 
 
     def MinMonster(self):
@@ -101,62 +101,62 @@ class Controller:
                    if self.board[location[0]][location[1]] == 90:
                        if self.in_bound(row-1,col) and (self.board[row-1][col] in [10, 12, 18, 80, 88]) and ((row-1 != location[0]) or (col != (location[1]))) and flag:
                            if self.in_bound(row-1,col-1) and (self.board[row-1][col-1] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','U','L','B','R','D']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','U','L','B','R','D']
                                flag = False
                            elif self.in_bound(row-1,col+1) and (self.board[row-1][col+1] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','U','R','B','L','D']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','U','R','B','L','D']
                                flag = False
                            elif self.in_bound(row-2,col) and (self.board[row-2][col] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','U','U','B','D','D']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','U','U','B','D','D']
                                flag = False
                        if self.in_bound(row+1,col) and (self.board[row+1][col] in [10, 12, 18, 80, 88]) and ((row+1 != location[0]) or (col != (location[1]))) and flag:
                            if self.in_bound(row+1,col-1) and (self.board[row+1][col-1] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','D','L','B','R','U']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','D','L','B','R','U']
                                flag = False
                            elif self.in_bound(row+1,col+1) and (self.board[row+1][col+1] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','D','R','B','L','U']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','D','R','B','L','U']
                                flag = False
                            elif self.in_bound(row+2,col) and (self.board[row+2][col] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','D','D','B','U','U']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','D','D','B','U','U']
                                flag = False
                        if self.in_bound(row,col-1) and (self.board[row][col-1] in [10, 12, 18, 80, 88]) and ((row != location[0]) or (col-1 != (location[1]))) and flag:
                            if self.in_bound(row,col-2) and (self.board[row][col-2] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','L','L','B','R','R']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','L','L','B','R','R']
                                flag = False
                            elif self.in_bound(row+1,col-1) and (self.board[row+1][col-1] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','L','D','B','U','R']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','L','D','B','U','R']
                                flag = False
                            elif self.in_bound(row-1,col-1) and (self.board[row-1][col-1] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','L','U','B','D','R']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','L','U','B','D','R']
                                flag = False
                        if self.in_bound(row,col+1) and (self.board[row][col+1] in [10, 12, 18, 80, 88]) and ((row != location[0]) or (col+1 != (location[1]))) and flag:
                            if self.in_bound(row,col+2) and (self.board[row][col+2] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','R','R','B','L','L']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','R','R','B','L','L']
                                flag = False
                            elif self.in_bound(row+1,col+1) and (self.board[row+1][col+1] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','R','D','B','U','L']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','R','D','B','U','L']
                                flag = False
                            elif self.in_bound(row-1,col+1) and (self.board[row-1][col+1] in [10, 12, 18, 80, 88]):
-                               self.costs[((row,col),(location[0],location[1]))] = [1,'S','R','U','B','D','L']
+                               self.costs[((row,col),(location[0],location[1]))] = [2,'S','R','U','B','D','L']
                                flag = False
                    if (row == location[0]) and (col+1 == (location[1])):
                        if flag:
-                           self.costs[((row,col),(location[0],location[1]))] = [0,'R']
+                           self.costs[((row,col),(location[0],location[1]))] = [1,'R']
                        else:
                            self.costs[((row,col),(location[0],location[1]))].append('R')
                    elif (row+1 == location[0]) and (col == (location[1])):
                        if flag:
-                           self.costs[((row,col),(location[0],location[1]))] = [0,'D']
+                           self.costs[((row,col),(location[0],location[1]))] = [1,'D']
                        else:
                            self.costs[((row,col),(location[0],location[1]))].append('D')
                    elif (row == location[0]) and (col-1 == (location[1])):
                        if flag:
-                           self.costs[((row,col),(location[0],location[1]))] = [0,'L']
+                           self.costs[((row,col),(location[0],location[1]))] = [1,'L']
                        else:
                            self.costs[((row,col),(location[0],location[1]))].append('L')
                    elif (row-1 == location[0]) and (col == (location[1])):
                        if flag:
-                           self.costs[((row,col),(location[0],location[1]))] = [0,'U']
+                           self.costs[((row,col),(location[0],location[1]))] = [1,'U']
                        else:
                            self.costs[((row,col),(location[0],location[1]))].append('U')
         if len(TempNeighboorsList):
