@@ -685,13 +685,17 @@ class Controller:
         
     def Check(self, NextMove, board):
         if NextMove in ['Check1', 'Check12', 'Check13', 'Check14','CheckAll']:
-            return self.CheckAction('U', board)
-        elif NextMove in ['Check2', 'Check12', 'Check23', 'Check24', 'CheckAll']:
-            return self.CheckAction('L', board)
-        elif NextMove in ['Check3', 'Check13', 'Check23', 'Check34', 'CheckAll']:
-            return self.CheckAction('D', board)
-        elif NextMove in ['Check4', 'Check14', 'Check24', 'Check34', 'CheckAll']:
-            return self.CheckAction('R', board)
+            if self.CheckAction('U', board):
+                return
+        if NextMove in ['Check2', 'Check12', 'Check23', 'Check24', 'CheckAll']:
+            if self.CheckAction('L', board):
+                return
+        if NextMove in ['Check3', 'Check13', 'Check23', 'Check34', 'CheckAll']:
+            if self.CheckAction('D', board):
+                return
+        if NextMove in ['Check4', 'Check14', 'Check24', 'Check34', 'CheckAll']:
+            if self.CheckAction('R', board):
+                return
         else:
             self.LastAction = 'W'
 
@@ -700,6 +704,10 @@ class Controller:
         CellZone2 = 0
         CellZone3 = 0
         CellZone4 = 0
+        DontGo1 = True
+        DontGo2 = True
+        DontGo3 = True
+        DontGo4 = True
         Actions = ('L', 'D', 'R', 'U')
         ActionDict = dict(zip(Actions,((0,-1),(1,0),(0,1),(-1,0))))
         MoveCheck = ActionDict[action][0] + self.BMx,  ActionDict[action][1] + self.BMy
@@ -710,19 +718,39 @@ class Controller:
                         if self.in_bound(MoveCheck[0] + x, MoveCheck[1] + y) == True:
                             if CellZone == 1:
                                 CellZone1 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                if CellZone1 in [10, 90]:
+                                    DontGo1 = False
                                 continue
                             if CellZone == 2:
                                 CellZone2 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                if CellZone2 in [10, 90]:
+                                    DontGo2 = False
                                 continue
                             if CellZone == 3:
                                 CellZone3 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                if CellZone3 in [10, 90]:
+                                    DontGo3 = False
                                 continue
                             if CellZone == 4:
                                 CellZone4 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                if CellZone4 in [10, 90]:
+                                    DontGo4 = False
                                 continue
-                self.LastAction = action
+
+                    if DontGo1 or DontGo2 or DontGo3 or DontGo4:
+                        return False
+                    else:
+                        self.LastAction = action
+                        return True
+                else:
+                    self.LastAction = action
+                    return True
+            else:
+                self.LastAction = 'W'
+                return False
         else:
             self.LastAction = 'W'
+            return False
 
     def CreatePolicy(self):
         #create the self.Policy[((1,x,y),NumMonster,monster,walls,boarders)]--> look on the + around Bomberman and define the following:
