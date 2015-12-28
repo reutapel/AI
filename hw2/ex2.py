@@ -56,6 +56,7 @@ class Controller:
         self.Bomby = None
         self.InitBombx = None
         self.InitBomby = None
+        self.SetTime = 0
         self.Monsters = {}
         self.N = len(board)
         self.M = len(board[1])
@@ -250,10 +251,10 @@ class Controller:
             self.LastAction ='W'
             self.UsePolicyLastMove = False
         self.reward = reward
-        if self.LastAction == 'W':
-            self.LastAction == 'W'
+        # if self.LastAction == 'W':
+        #     self.LastAction == 'W'
         if self.LastAction == 'S':
-            self.LastAction == 'S'
+            self.SetTime == steps + 1
         # if self.LastAction == 'B' and self.in_bound(self.Bombx, self.Bomby):
         if self.in_bound(self.Bombx, self.Bomby):
             if board[self.Bombx][self.Bomby] == 10:
@@ -261,7 +262,7 @@ class Controller:
         if self.in_bound(self.BMx, self.BMy) and board[self.BMx][self.BMy] in [18,88]:
             if self.LastAction == 'S' and board[self.BMx][self.BMy] == 88:
                 self.Bombx, self.Bomby = self.BMx, self.BMy
-            self.GetNextMove(board)
+            self.GetNextMove(board, steps)
             # if self.LastAction == 'WM':
             #    return 'W'
             # else:
@@ -275,7 +276,7 @@ class Controller:
                         self.BMx , self.BMy = self.BMx + x, self.BMy + y
                         if board[self.BMx][self.BMy] == 88:
                             self.Bombx, self.Bomby = self.BMx, self.BMy
-                        self.LastAction = self.GetNextMove(board)
+                        self.LastAction = self.GetNextMove(board, steps)
                         # if self.LastAction == None:
                         #     return self.LastAction
                         return self.LastAction
@@ -283,7 +284,7 @@ class Controller:
         self.UpdateBombermanLocation(board)
         return self.LastAction
 
-    def GetNextMove(self, board):
+    def GetNextMove(self, board, steps):
         Boarders = self.BuildPlus()
         Bombs, NumMonsters, Monsters, Walls = self.FillPlus(board, Boarders)
         if NumMonsters == 0:
@@ -303,8 +304,11 @@ class Controller:
                 # self.UpdateMonstersLocation(board)
                 self.dijkstra(board)
                 NextMove = self.Fifo.pop()
-                if NextMove == 'S' and self.Bombx is not None:
-                    NextMove = self.Fifo.pop()
+                if NextMove == 'S':
+                    if self.Bombx is not None:
+                        NextMove = self.Fifo.pop()
+                    else:
+                        NextMove = self.CheckS(board, Monsters)
                 if NextMove == None: #FIFO is empty
                     self.LastAction = 'W'
                     self.UpdateBombermanLocation(board)
@@ -313,21 +317,50 @@ class Controller:
                     self.LastAction = NextMove
                     while not self.UpdateBombermanLocation(board):
                         NextMove = self.Fifo.pop()
-                        if NextMove == 'S' and self.Bombx is not None:
-                            NextMove = self.Fifo.pop()
+                        if NextMove == 'S':
+                            if self.Bombx is not None:
+                                NextMove = self.Fifo.pop()
+                            else:
+                                NextMove = self.CheckS(board, Monsters)
+                        elif NextMove == 'B':
+                            NextMove = self.CheckIfBomb(board, steps)
+                            if NextMove in ['B', 'W']:
+                                self.LastAction = NextMove
+                                self.UpdateBombermanLocation(board)
+                                return
+                            else:
+                                self.Check(NextMove, board)
+                                self.UpdateBombermanLocation(board)
+                                return
                         self.LastAction = NextMove
 
                     # if not self.UpdateBombermanLocation(board):
                     #     self.LastAction = 'W'
                     return self.LastAction
             else:
-                if NextMove == 'S' and self.Bombx is not None:
-                    NextMove = self.Fifo.pop()
+                if NextMove == 'S':
+                    if self.Bombx is not None:
+                        NextMove = self.Fifo.pop()
+                    else:
+                        NextMove = self.CheckS(board, Monsters)
                 self.LastAction = NextMove
                 while not self.UpdateBombermanLocation(board):
                     NextMove = self.Fifo.pop()
-                    if NextMove == 'S' and self.Bombx is not None:
-                        NextMove = self.Fifo.pop()
+                    if NextMove == 'S':
+                        if self.Bombx is not None:
+                            NextMove = self.Fifo.pop()
+                        else:
+                            NextMove = self.CheckS(board, Monsters)
+                    elif NextMove == 'B':
+                        NextMove = self.CheckIfBomb(board, steps)
+                        if NextMove in ['B', 'W']:
+                            self.LastAction = NextMove
+                            self.UpdateBombermanLocation(board)
+                            return
+                        else:
+                            self.Check(NextMove, board)
+                            self.UpdateBombermanLocation(board)
+                            return
                     self.LastAction = NextMove
 
                 # if not self.UpdateBombermanLocation(board):
@@ -340,23 +373,42 @@ class Controller:
             Walls = tuple(Walls)
             Boarders = tuple(Boarders)
             NextMove = self.GetPolicy((Bombs, NumMonsters, Monsters, Walls, Boarders))
-            if NextMove in ('U', 'D', 'R', 'L', 'W', 'B'):
+            if NextMove in ('U', 'D', 'R', 'L', 'W'):
                 self.LastAction = NextMove
                 self.UpdateBombermanLocation(board)
+                return
                 # return self.LastAction
+            elif NextMove == 'B':
+                NextMove = self.CheckIfBomb(board, steps)
+                if NextMove in ['B', 'W']:
+                    self.LastAction = NextMove
+                    self.UpdateBombermanLocation(board)
+                    return
+                else:
+                    self.Check(NextMove, board)
+                    self.UpdateBombermanLocation(board)
+                    return
             elif NextMove == 'S':
+                if self.Bombx is not None:
+                    NextMove = self.Fifo.pop()
+                else:
+                    NextMove = self.CheckS(board, Monsters)
                 self.LastAction = NextMove
                 self.UpdateBombermanLocation(board)
+                return
                 # return self.LastAction
             elif NextMove == None:
                 if self.Bomby is not None:
                     if self.monsterBomberManhattannDistance(self.Bombx, self.Bomby) == 1:
                         self.LastAction = 'W'
+                        return
                     else:
                         self.LastAction = 'B'
+                        return
                 else:
                     self.LastAction = 'W'
                     self.UpdateBombermanLocation(board)
+                    return
                 # return self.LastAction
             elif NextMove == 'Check234':
                 return self.CheckThreeZones(list(board), list(Monsters),3, 'Check3',2, 'Check2',4, 'Check4', 1, 1)
@@ -369,14 +421,99 @@ class Controller:
             elif NextMove == 'CheckS':
                 self.LastAction = self.CheckS(board,list(Monsters))
                 self.UpdateBombermanLocation(board)
+                return
                 # return self.LastAction
             else:
                 self.Check(NextMove, board)
                 self.UpdateBombermanLocation(board)
+                return
                 # return self.LastAction
 
-    def CheckS(self, board, Monsters):
-            # def UpdateCell (self, board, x, y, Bombs, ChangeBomb):
+    def CheckIfBomb(self, board, steps):
+    # there is bomb with Bomberman or 2 steps from him
+    #     check if there is 90 or 12 next to the bomb:
+        IsMonster1 = False
+        IsMonster2 = False
+        IsMonster3 = False
+        IsMonster4 = False
+        for CellZone, x,y in [(1, -1,0), (2,0,-1), (3, 1,0), (4, 0,1)]:
+            if self.in_bound(self.Bombx + x, self.Bomby + y) == True:
+                if CellZone == 1:
+                    if board[self.Bombx + x][self.Bomby + y] in [12,90]:
+                        IsMonster1 = True
+                    continue
+                if CellZone == 2:
+                    if board[self.Bombx + x][self.Bomby + y] in [12,90]:
+                        IsMonster2 = True
+                    continue
+                if CellZone == 3:
+                    if board[self.Bombx + x][self.Bomby + y] in [12,90]:
+                        IsMonster3 = True
+                    continue
+                if CellZone == 4:
+                    if board[self.Bombx + x][self.Bomby + y] in [12,90]:
+                        IsMonster3 = True
+                    continue
+        if board[self.BMx][self.BMy] == 18: #the bomb is 2 steps from Bomberman --> if there is 90 or 12 next to the bomb --> blow it
+            if IsMonster1 or IsMonster2 or IsMonster3 or IsMonster4:
+                return 'B'
+            elif self.SetTime - steps >= 10:
+                return 'B'
+            else: #check where to go --> if there is a monster 2 steps from me, but there is a wall or a bomb between us, and there is no monster next to me --> wait
+                IsMonster1 = False
+                IsMonster2 = False
+                IsMonster3 = False
+                IsMonster4 = False
+                CellZone1 = False
+                CellZone2 = False
+                CellZone3 = False
+                CellZone4 = False
+                for CellZone, x,y in [(1, -1,0), (2,0,-1), (3, 1,0), (4, 0,1)]:
+                    if self.in_bound(self.BMx + x, self.BMy + y) == True:
+                        if CellZone == 1:
+                            if board[self.BMx + x][self.BMy + y] == 12:
+                                CellZone1 = True
+                            elif board[self.BMx + x][self.BMy + y] in [90,99,80]:
+                                if self.in_bound(self.BMx + 2*x, self.BMy + 2*y) == True:
+                                    if board[self.BMx + 2*x][self.BMy + 2*y] == 12:
+                                        IsMonster1 = True
+                            continue
+                        if CellZone == 2:
+                            if board[self.BMx + x][self.BMy + y] == 12:
+                                CellZone2 = True
+                            elif board[self.BMx + x][self.BMy + y] in [90,99,80]:
+                                if self.in_bound(self.BMx + 2*x, self.BMy + 2*y) == True:
+                                    if board[self.BMx + 2*x][self.BMy + 2*y] == 12:
+                                        IsMonster2 = True
+                            continue
+                        if CellZone == 3:
+                            if board[self.BMx + x][self.BMy + y] == 12:
+                                CellZone3 = True
+                            elif board[self.BMx + x][self.BMy + y] in [90,99,80]:
+                                if self.in_bound(self.BMx + 2*x, self.BMy + 2*y) == True:
+                                    if board[self.BMx + 2*x][self.BMy + 2*y] == 12:
+                                        IsMonster3 = True
+                            continue
+                        if CellZone == 4:
+                            if board[self.BMx + x][self.BMy + y] == 12:
+                                CellZone4 = True
+                            elif board[self.BMx + x][self.BMy + y] in [90,99,80]:
+                                if self.in_bound(self.BMx + 2*x, self.BMy + 2*y) == True:
+                                    if board[self.BMx + 2*x][self.BMy + 2*y] == 12:
+                                        IsMonster4 = True
+                            continue
+                if IsMonster1 or IsMonster2 or IsMonster3 or IsMonster4: #if there is a monster 2 steps from bomberman and wall or bomb between them
+                    if CellZone1 or CellZone2 or CellZone3 or CellZone4: #there is a monster next to bomberman:
+                        return 'CheckAll'
+                    else: #there is no monster next to bomberman:
+                        return 'W'
+                # else: #if there is no monster --> wait
+                #     return 'W'
+        else:
+            return 'W'
+
+
+    def CheckS(self, board, Monsters): #check if we want to set a bomb --> if there is 99 next to it --> don't set
         CellZone1 = 0
         CellZone2 = 0
         CellZone3 = 0
@@ -396,29 +533,37 @@ class Controller:
                     CellZone4 = board[self.BMx + x][self.BMy + y]
                     continue
 
-        if Monsters[0] == 1 and CellZone1 in [12,90]:
+        if Monsters[0] == 1 or CellZone1 in [12,90, 10]:
             return 'S'
-        elif Monsters[1] == 1 and CellZone2 in [12,90]:
+        elif Monsters[1] == 1 or CellZone2 in [12,90, 10]:
             return 'S'
-        elif Monsters[2] == 1 and CellZone3 in [12,90]:
+        elif Monsters[2] == 1 or CellZone3 in [12,90, 10]:
             return 'S'
-        elif Monsters[3] == 1 and CellZone4 in [12,90]:
+        elif Monsters[3] == 1 or CellZone4 in [12,90, 10]:
             return 'S'
         else:
             for zone in xrange(0,4):
                 if Monsters[zone] == 0:
                     if zone == 0 and CellZone1 == 10:
                         if self.LastAction in [None, 'U', 'W','B', 'S']:
-                            return 'U'
+                            if self.CheckAction('U', board):
+                                if self.LastAction != 'W':
+                                    return self.LastAction
                     if zone == 1 and CellZone2 == 10:
                         if self.LastAction in [None, 'L', 'W','B', 'S']:
-                            return 'L'
+                            if self.CheckAction('L', board):
+                                if self.LastAction != 'W':
+                                    return self.LastAction
                     if zone == 2 and CellZone3 == 10:
                         if self.LastAction in [None, 'D', 'W','B', 'S']:
-                            return 'D'
+                            if self.CheckAction('D', board):
+                                if self.LastAction != 'W':
+                                    return self.LastAction
                     if zone == 3 and CellZone4 == 10:
                         if self.LastAction in [None, 'R', 'W','B', 'S']:
-                            return 'R'
+                            if self.CheckAction('R', board):
+                                if self.LastAction != 'W':
+                                    return self.LastAction
 
             for zone in xrange(0,4):
                 if Monsters[zone] == 0:
@@ -704,10 +849,10 @@ class Controller:
         CellZone2 = 0
         CellZone3 = 0
         CellZone4 = 0
-        DontGo1 = True
-        DontGo2 = True
-        DontGo3 = True
-        DontGo4 = True
+        Go1 = False
+        Go2 = False
+        Go3 = False
+        Go4 = False
         Actions = ('L', 'D', 'R', 'U')
         ActionDict = dict(zip(Actions,((0,-1),(1,0),(0,1),(-1,0))))
         MoveCheck = ActionDict[action][0] + self.BMx,  ActionDict[action][1] + self.BMy
@@ -716,32 +861,35 @@ class Controller:
                 if self.in_bound(self.BMx, self.BMy) == True and board[self.BMx][self.BMy] == 88:
                     for CellZone, x,y in [(1, -1,0), (2,0,-1), (3, 1,0), (4, 0,1)]:
                         if self.in_bound(MoveCheck[0] + x, MoveCheck[1] + y) == True:
-                            if CellZone == 1:
-                                CellZone1 = board[MoveCheck[0] + x][MoveCheck[1] + y]
-                                if CellZone1 in [10, 90]:
-                                    DontGo1 = False
-                                continue
-                            if CellZone == 2:
-                                CellZone2 = board[MoveCheck[0] + x][MoveCheck[1] + y]
-                                if CellZone2 in [10, 90]:
-                                    DontGo2 = False
-                                continue
-                            if CellZone == 3:
-                                CellZone3 = board[MoveCheck[0] + x][MoveCheck[1] + y]
-                                if CellZone3 in [10, 90]:
-                                    DontGo3 = False
-                                continue
-                            if CellZone == 4:
-                                CellZone4 = board[MoveCheck[0] + x][MoveCheck[1] + y]
-                                if CellZone4 in [10, 90]:
-                                    DontGo4 = False
-                                continue
+                            reut =  MoveCheck[0]+x
+                            shimi = MoveCheck[1]+y
+                            if not (reut == self.BMx and shimi == self.BMy):
+                                if CellZone == 1:
+                                    CellZone1 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                    if CellZone1 == 10:
+                                        Go1 = True
+                                    continue
+                                if CellZone == 2:
+                                    CellZone2 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                    if CellZone2 == 10:
+                                        Go2 = True
+                                    continue
+                                if CellZone == 3:
+                                    CellZone3 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                    if CellZone3 == 10:
+                                        Go3 = True
+                                    continue
+                                if CellZone == 4:
+                                    CellZone4 = board[MoveCheck[0] + x][MoveCheck[1] + y]
+                                    if CellZone4 == 10:
+                                        Go4 = True
+                                    continue
 
-                    if DontGo1 or DontGo2 or DontGo3 or DontGo4:
-                        return False
-                    else:
+                    if Go1 or Go2 or Go3 or Go4:
                         self.LastAction = action
                         return True
+                    else:
+                        return False
                 else:
                     self.LastAction = action
                     return True
