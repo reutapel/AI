@@ -245,12 +245,12 @@ class Controller:
             self.Bombx, self.Bomby = self.InitBombx, self.InitBomby
             self.LastAction ='W'
             self.UsePolicyLastMove = False
-        if reward - self.reward <= -5:
-            self.BMx, self.BMy = self.InitBMx, self.InitBMy
-            self.Bombx, self.Bomby = self.InitBombx, self.InitBomby
-            self.LastAction ='W'
-            self.UsePolicyLastMove = False
-        self.reward = reward
+        # if reward - self.reward == -5 or reward - self.reward
+        #     self.BMx, self.BMy = self.InitBMx, self.InitBMy
+        #     self.Bombx, self.Bomby = self.InitBombx, self.InitBomby
+        #     self.LastAction ='W'
+        #     self.UsePolicyLastMove = False
+        # self.reward = reward
         # if self.LastAction == 'W':
         #     self.LastAction == 'W'
         if self.LastAction == 'S':
@@ -317,6 +317,9 @@ class Controller:
                     self.LastAction = NextMove
                     while not self.UpdateBombermanLocation(board):
                         NextMove = self.Fifo.pop()
+                        if NextMove == None: #FIFO is empty
+                            self.dijkstra(board)
+                            NextMove = self.Fifo.pop()
                         if NextMove == 'S':
                             if self.Bombx is not None:
                                 NextMove = self.Fifo.pop()
@@ -346,6 +349,9 @@ class Controller:
                 self.LastAction = NextMove
                 while not self.UpdateBombermanLocation(board):
                     NextMove = self.Fifo.pop()
+                    if NextMove == None: #FIFO is empty
+                        self.dijkstra(board)
+                        NextMove = self.Fifo.pop()
                     if NextMove == 'S':
                         if self.Bombx is not None:
                             NextMove = self.Fifo.pop()
